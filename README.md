@@ -1,219 +1,454 @@
-# GitHub Publishing Utility
-## Functional Specification — Version 1.0
+# GitHub Repository Creation and Publishing Utility
+## Technical Specification — Version 2.0
 
-### 1. Purpose
+**Status:** Draft for review  
+**Target environment:** Cygwin on Windows  
+**Implementation language:** Bash  
+**Primary transport:** Git over SSH  
+**GitHub administration:** GitHub REST API over HTTPS  
+**Configuration:** Per-project hidden configuration file
 
-Create a reusable Bash utility for Cygwin that automates the creation of GitHub repositories and publication of approved local Git repositories.
+---
 
-Emilio is the sole publisher and approval authority. Other contributors and AI assistants may prepare and commit changes, but only Emilio publishes them to GitHub.
+## 1. Purpose
 
-### 2. Primary execution
+Develop a reusable command-line utility that creates a GitHub repository when necessary and publishes the committed history of an existing local Git project.
 
-Default command:
+The utility should simplify the process to a single command while retaining conservative defaults, explicit safeguards, and configurable behavior.
 
-`github_publish.sh`
+The first implementation will target Emilio's Cygwin environment. The architecture should remain modular enough to support additional features and improvements after testing with multiple projects.
 
-The utility derives the GitHub repository name from the local Git project root directory.
+## 2. Fundamental Principles
 
-Example:
+1. **Local project ownership:** The local Git project is the source of truth.
+2. **Committed history only:** Publish existing commits. Never automatically stage files or create commits.
+3. **Conservative defaults:** Stop rather than overwrite or modify an existing repository unexpectedly.
+4. **Explicit authorization:** Repository creation requires confirmation unless configuration or command-line arguments authorize it.
+5. **Separation of responsibilities:** Use HTTPS/PAT for GitHub administration and SSH for Git transport.
+6. **Preserve history:** Create empty GitHub repositories without automatically initializing README, license, or `.gitignore` files.
+7. **Modularity:** Separate configuration, validation, Git inspection, GitHub API operations, and publishing.
+8. **Portability:** Project configuration must not contain credentials or machine-specific secrets.
 
-- Local directory: `/ibkr/trading_intel`
-- GitHub repository: `TheInternetTutor/trading_intel`
+## 3. Operating Environment
 
-An optional argument can override the repository name.
+The initial implementation must support:
 
-### 3. Execution workflow
+- Cygwin on Windows.
+- Bash scripting.
+- Git.
+- `curl` for GitHub REST API requests.
+- SSH for Git transport.
+- A fine-grained GitHub Personal Access Token (PAT).
 
-1. Identify the local Git repository root.
-2. Derive the default repository name from its directory.
-3. Verify Git installation and repository integrity.
-4. Verify the global Git author and committer identities.
-5. Inspect local Git configuration and existing remotes.
-6. Authenticate against GitHub using HTTPS and the existing PAT.
-7. Identify the authenticated GitHub account.
-8. Check whether the target repository already exists.
-9. If it exists, stop by default and report the situation.
-10. If it does not exist, request confirmation unless overridden by configuration or arguments.
-11. Ask for repository visibility unless configured or supplied as an argument.
-12. Create the GitHub repository.
-13. Configure the SSH remote.
-14. Verify SSH connectivity.
-15. Publish the local `master` branch.
-16. Verify the published repository and commit.
+The utility should check for required commands and report missing dependencies before performing operations.
 
-### 4. Repository naming and identity
+The implementation should avoid requiring GitHub CLI (`gh`).
 
-- Default repository name: local Git project root directory name.
-- Default owner: authenticated GitHub account.
-- No hardcoded GitHub username.
-- No hardcoded developer name or email.
-- Never configure local `user.name` or `user.email`.
-- Use the developer's existing Git configuration.
-- Preserve commit author and committer attribution.
-- Do not create commits automatically.
+## 4. Repository Naming and Identification
 
-### 5. Branch policy
+### 4.1 Default repository name
 
-Version 1.0 supports only `master`.
+The default GitHub repository name is derived from the basename of the local Git project directory.
 
-- Publish the latest existing commit on `master`.
-- Do not create, merge, or switch branches.
-- Do not publish other branches or tags.
-- Future versions may introduce configurable branching.
+For example, a local project at `/ibkr/trading_intel` maps to:
 
-### 6. Commit and source-code policy
+`TheInternetTutor/trading_intel`
 
-The utility publishes committed Git history only.
+### 4.2 Renamed project directories
 
-- Never stage files automatically.
-- Never create commits automatically.
-- Never upload uncommitted modifications.
-- Never upload untracked files.
-- Never discard local changes.
-- Preserve the existing commit history.
+If the local project directory is renamed, the new directory name is treated as a new repository name.
 
-The latest commit on `master` is the publication boundary. The script does not attempt to determine whether a commit is conceptually stable; that is the architect's responsibility.
+The utility must not attempt to infer that a renamed directory represents an existing GitHub repository merely because its Git history or contents are identical.
 
-### 7. Existing GitHub repository policy
+### 4.3 Name override
 
-Default behavior: STOP.
+The repository name may be overridden through a command-line argument.
 
-If the target repository already exists:
+## 5. Configuration Architecture
 
-- Report its existence.
-- Do not create another repository.
-- Do not overwrite remote contents.
-- Do not push automatically.
+### 5.1 Configuration mechanism
 
-An optional future/explicit update policy may permit publishing to an existing repository, provided histories are compatible and the operation is a normal, non-force push.
+The utility will use only one project-level configuration mechanism:
 
-### 8. Existing remote policy
+`.github-publish.conf`
 
-- If no `origin` exists, configure it.
-- If `origin` points to the expected repository, reuse it.
-- If `origin` points elsewhere, stop and report the conflict.
-- Never silently replace an existing remote.
-- Never force-push.
+No Git system, global, local, or worktree configuration entries will be used to store utility preferences.
 
-### 9. Repository visibility
+### 5.2 Location and scope
 
-Supported values:
+The file resides in the root of the local Git project.
 
-- `public`
-- `private`
+Each project maintains its own configuration independently. Different projects may therefore use different publishing preferences.
 
-Default: Ask the publisher unless a local configuration or command-line argument supplies the value.
+### 5.3 Version control
 
-### 10. Authentication
+The configuration file is permitted to be committed to Git and shared with project contributors.
 
-GitHub administration:
+It will not be automatically excluded from version control.
 
-- HTTPS REST API.
-- Fine-grained Personal Access Token.
-- Token file: `/dir_bash/home/.config/github/github_pat.txt`
-- Never display or log the token.
-- Never place credentials inside the project repository.
+### 5.4 Configuration precedence
 
-Git transport:
-
-- SSH.
-- Reuse the publisher's existing SSH configuration.
-- Do not generate or replace SSH keys automatically.
-
-Initial implementation uses the existing plaintext token file. GPG encryption is a future enhancement.
-
-### 11. Configuration architecture
-
-Three levels of configuration, with this precedence:
+Settings are resolved in this order:
 
 1. Built-in defaults.
-2. Per-project local configuration.
+2. Project `.github-publish.conf`.
 3. Command-line arguments.
 
-Command-line arguments override local configuration.
+Command-line arguments override the corresponding project configuration values for the current execution. They do not modify the configuration file.
 
-Suggested per-project configuration location:
+### 5.5 Initial configuration parameters
 
-`.git/github-publish.conf`
+The initial configuration schema will support:
 
-This keeps publishing preferences outside the tracked project files.
+- `visibility`: `public` or `private`.
+- `confirm_create`: `yes` or `no`.
+- `existing_repository`: `stop` or `update`.
+- `existing_remote`: `reuse` or `stop`.
+- `branch`: `master`.
+- `verify_after_publish`: `yes` or `no`.
 
-Configuration should support:
+The configuration parser must validate recognized settings and values. Invalid or unknown settings should produce a clear error rather than being silently ignored.
 
-- Repository visibility.
-- Confirmation requirements.
-- Existing-repository policy.
-- Existing-remote policy.
-- Branch selection.
-- Verification behavior.
+The file must not contain PATs, SSH private keys, or other credentials.
 
-No credentials or developer identities belong in this configuration file.
+### 5.6 Initial defaults
 
-### 12. Command-line interface
+When no project configuration or command-line override is supplied:
 
-Proposed parameters:
+- Visibility: ask the user.
+- Repository creation: ask for confirmation.
+- Existing GitHub repository: stop and report.
+- Existing `origin` remote pointing elsewhere: stop and report.
+- Existing `origin` pointing to the intended repository: reuse it.
+- Publishing branch: `master`.
+- Post-publication verification: enabled.
 
-- `--name NAME`: Override repository name.
-- `--visibility public|private`: Specify visibility.
-- `--yes`: Approve routine confirmation prompts.
-- `--confirm`: Require interactive confirmation.
-- `--existing stop|update`: Control existing-repository behavior.
-- `--dry-run`: Inspect and report without changing anything.
-- `--help`: Display usage instructions.
+## 6. Authentication and Security
 
-The default behavior remains conservative.
+### 6.1 GitHub API authentication
 
-### 13. Modular architecture
+The utility will use a fine-grained GitHub PAT to perform administrative operations.
 
-Suggested modules:
+The token is stored separately from project configuration at:
 
-- `github_publish.sh`: Entry point and orchestration.
-- `config.sh`: Defaults, local configuration, and argument precedence.
-- `github_api.sh`: Authentication, repository lookup, and creation.
-- `git_inspection.sh`: Repository, identity, branch, commit, and remote checks.
-- `git_publish.sh`: SSH setup and Git publishing.
-- `validation.sh`: Preconditions, error handling, and verification.
+`/dir_bash/home/.config/github/github_pat.txt`
 
-Each module should have a clearly defined responsibility and should be independently maintainable.
+The utility must:
 
-### 14. Safety requirements
+- Read the token from that file.
+- Never print the token.
+- Never include it in command output or diagnostic logs.
+- Never place it in Git configuration, project configuration, repository URLs, or commits.
+- Report a useful error if the token file is missing, unreadable, or invalid.
 
-- Never delete or overwrite local project files.
+The token's required permissions must support repository administration and creation.
+
+### 6.2 Git transport
+
+Git operations will use SSH.
+
+The utility must use the configured SSH identity and connection settings. It must not embed private-key material in the script or project configuration.
+
+### 6.3 Separation of credentials
+
+The following responsibilities remain separate:
+
+- PAT file: GitHub API authentication.
+- SSH configuration and private key: Git transport authentication.
+- Project configuration: publishing preferences only.
+- Git identity configuration: author and committer identity.
+
+## 7. Git Identity and Authorship
+
+The utility must inspect the effective Git author and committer identities.
+
+It must not:
+
+- Hardcode Emilio's identity into the utility.
+- Replace the user's global Git identity.
+- Rewrite existing commit authorship.
+- Automatically create commits.
+
+Git's configured identity must remain authoritative.
+
+The utility should report missing or invalid identity information before publishing when it affects the operation.
+
+## 8. Branch Policy
+
+Version 1 of the utility supports only the `master` branch.
+
+The utility must:
+
+- Verify that the local project is on the supported branch.
+- Publish the latest committed state of `master`.
+- Stop if the required branch is unavailable.
+- Avoid creating, switching, merging, or renaming branches automatically.
+
+A future version may introduce configurable branch policies.
+
+## 9. Local Repository Inspection
+
+Before publishing, the utility must establish:
+
+1. The current directory belongs to a valid Git working tree.
+2. The Git project root has been identified.
+3. The repository has a valid commit history.
+4. The current branch is `master`.
+5. The latest commit is identifiable.
+6. Git author and committer identity are available.
+7. The configured remotes have been inspected.
+8. The working tree status has been inspected.
+
+### 9.1 Uncommitted changes
+
+The utility must not stage, commit, stash, discard, or otherwise modify uncommitted changes.
+
+Uncommitted modifications and untracked files remain local and are not included in the publication.
+
+The utility should report their presence so the user understands that only committed history will be published.
+
+## 10. GitHub Repository Discovery and Creation
+
+### 10.1 Account identification
+
+The utility must authenticate with the GitHub API and identify the authenticated account.
+
+The repository will be created under that account.
+
+### 10.2 Repository existence check
+
+Before creating a repository, the utility must check whether the intended repository already exists.
+
+### 10.3 New repository creation
+
+If the repository does not exist:
+
+1. Determine the repository name.
+2. Determine visibility from command-line arguments, project configuration, or user input.
+3. Request confirmation unless creation has already been authorized.
+4. Create the repository through the GitHub REST API.
+5. Set the requested visibility.
+6. Do not automatically initialize a README, license, or `.gitignore`.
+7. Confirm successful creation before proceeding.
+
+### 10.4 Existing repository behavior
+
+The default behavior is `stop`.
+
+If the repository already exists, the utility must report that fact and stop without attempting to push.
+
+An explicit configuration setting or command-line argument may authorize updating an existing repository.
+
+When updating is authorized:
+
+- Inspect the remote repository state.
+- Verify that the local and remote histories are compatible.
+- Use a normal Git push.
 - Never force-push.
-- Never create commits automatically.
-- Never silently change an existing remote.
-- Never publish an existing GitHub repository by default.
-- Never expose credentials in terminal output.
-- Never modify global developer identity.
-- Abort on failed authentication or failed validation.
-- Report errors clearly and return appropriate exit codes.
+- Stop if the histories cannot be reconciled safely.
 
-### 15. Future enhancements
+The utility must not silently overwrite remote content.
 
-Potential additions:
+## 11. Remote Management
 
-- GPG-encrypted credential storage.
-- Additional branch support.
-- Existing-repository update mode.
-- Repository descriptions and metadata.
-- Automated GitHub release management.
-- More advanced publishing reports.
+The utility must inspect the local Git remotes before configuring `origin`.
 
-These are outside the initial implementation unless explicitly authorized.
+### 11.1 No existing origin
 
-### 16. Acceptance criteria
+If no `origin` remote exists, configure it to point to the intended GitHub repository using SSH.
 
-Version 1.0 is complete when:
+### 11.2 Origin points to the intended repository
 
-1. A local Git repository can be identified automatically.
-2. The repository name is derived correctly.
-3. GitHub authentication is verified without exposing the token.
-4. Existing repositories are detected.
-5. New repositories can be created with the selected visibility.
-6. The correct SSH remote is configured or reused.
-7. Only committed history from `master` is published.
-8. Existing local changes remain untouched.
-9. The resulting GitHub repository is verified.
-10. Configuration and command-line overrides work as specified.
+Reuse the existing remote.
 
-**End of Specification 1.0**
+### 11.3 Origin points elsewhere
+
+Stop and report the discrepancy.
+
+Do not automatically replace, delete, or modify an unrelated remote.
+
+### 11.4 SSH verification
+
+Before pushing, verify that SSH authentication to GitHub works.
+
+The utility must stop if authentication fails.
+
+## 12. Publishing Workflow
+
+The expected execution sequence is:
+
+1. Parse command-line arguments.
+2. Locate the local Git project root.
+3. Load and validate `.github-publish.conf`, if present.
+4. Resolve configuration precedence.
+5. Validate required dependencies.
+6. Inspect the Git repository and current branch.
+7. Inspect Git identity, commit history, and working tree status.
+8. Inspect existing remotes.
+9. Read the PAT from its separate credential file.
+10. Authenticate with the GitHub API.
+11. Identify the authenticated GitHub account.
+12. Check whether the intended repository exists.
+13. If it exists, apply the configured existing-repository policy.
+14. If it does not exist, determine visibility and obtain authorization.
+15. Create the empty GitHub repository.
+16. Configure or reuse the SSH remote.
+17. Verify SSH authentication.
+18. Push the latest committed history on `master`.
+19. Verify publication.
+20. Report the outcome.
+
+The utility must stop immediately when a required safety condition fails.
+
+## 13. Command-Line Interface
+
+The initial interface should support:
+
+- `--name NAME`: Override the repository name.
+- `--visibility public|private`: Set repository visibility.
+- `--yes`: Authorize otherwise-confirmable operations, subject to safety checks.
+- `--confirm`: Require interactive confirmation for repository creation.
+- `--existing stop|update`: Define behavior when the GitHub repository already exists.
+- `--dry-run`: Inspect and report the intended actions without creating or modifying remote resources.
+- `--help`: Display usage information.
+
+Command-line arguments take precedence over project configuration.
+
+`--yes` must not implicitly authorize updating an existing repository. That behavior requires the explicit `--existing update` setting.
+
+The utility must reject invalid arguments and conflicting options with a clear explanation.
+
+## 14. Dry-Run Mode
+
+Dry-run mode must perform available inspection and validation steps without creating a GitHub repository or pushing commits.
+
+It should report:
+
+- Detected project root.
+- Proposed repository name.
+- Effective configuration values.
+- GitHub account identity, when authentication is available.
+- Repository existence status.
+- Current branch and latest commit.
+- Existing remote configuration.
+- Whether publication would proceed or stop.
+- The actions that would be performed.
+
+Dry-run must not modify the local Git repository or remote GitHub repository.
+
+## 15. Verification and Reporting
+
+After publication, the utility should verify that the expected branch and commit are available on GitHub.
+
+The final report should identify:
+
+- GitHub account.
+- Repository name and URL.
+- Repository visibility.
+- Local project directory.
+- Published branch.
+- Published commit identifier.
+- Whether the repository was newly created or already existed.
+- Whether publication succeeded or failed.
+
+Errors should identify the failed operation and provide enough information to diagnose the problem without exposing credentials.
+
+## 16. Modular Architecture
+
+The implementation should be divided into independent functional modules.
+
+Proposed structure:
+
+- `github_publish.sh` — Main entry point and orchestration.
+- `config.sh` — Defaults, configuration-file parsing, argument parsing, and precedence.
+- `github_api.sh` — PAT handling, API authentication, repository lookup, and repository creation.
+- `git_inspection.sh` — Project discovery, Git identity, branch, commit, status, and remote inspection.
+- `git_publish.sh` — SSH verification, remote configuration, push, and publication verification.
+- `validation.sh` — Preconditions, input validation, error handling, and safety checks.
+
+The main script should coordinate these modules rather than duplicate their functionality.
+
+Modules should be designed so that future features can be added without requiring a major rewrite.
+
+## 17. Error Handling and Safety Requirements
+
+The utility must stop safely when any of the following occurs:
+
+- The current directory is not inside a valid Git repository.
+- The repository has no commits.
+- The required branch is missing or unsupported.
+- Required dependencies are unavailable.
+- Git identity validation fails.
+- The PAT file is missing or unreadable.
+- GitHub API authentication fails.
+- The GitHub API returns an unexpected error.
+- Repository creation is denied or unsuccessful.
+- An existing remote points to another repository.
+- SSH authentication fails.
+- Remote history is incompatible with the local history.
+- A push fails.
+- Post-publication verification fails.
+
+The utility must never force-push, silently replace a remote, or automatically discard local changes.
+
+## 18. Acceptance Criteria
+
+The first implementation will be considered acceptable when the following scenarios work:
+
+1. A local Git project with no GitHub repository can be published successfully.
+2. The repository name defaults to the local project directory name.
+3. The user can override the repository name.
+4. Public and private repository creation both work.
+5. The utility can read project-specific settings from `.github-publish.conf`.
+6. Command-line arguments override project configuration.
+7. A project without a configuration file works using built-in defaults.
+8. The configuration file can be committed and shared without exposing credentials.
+9. An existing GitHub repository causes the default stop behavior.
+10. Explicit authorization allows a compatible existing repository to be updated.
+11. An unrelated `origin` remote causes a safe stop.
+12. An appropriate existing `origin` remote is reused.
+13. Only committed history is published.
+14. Uncommitted and untracked files remain untouched.
+15. The utility publishes the latest commit on `master`.
+16. SSH authentication and GitHub API authentication are handled independently.
+17. Dry-run reports the intended workflow without publishing.
+18. Successful publication is verified and reported.
+19. Errors do not expose the PAT or private-key information.
+
+## 19. Deferred Features
+
+The following are intentionally outside the initial implementation:
+
+- Support for branches other than `master`.
+- Automatic staging or committing.
+- Automatic conflict resolution or history rewriting.
+- Force-pushing.
+- Automatic deletion or replacement of remotes.
+- Credential encryption or credential-manager integration.
+- GitHub organization repositories.
+- Multiple GitHub accounts.
+- Advanced repository settings such as branch protection, topics, teams, and webhooks.
+- Automated synchronization or scheduled publishing.
+- A graphical user interface.
+
+These features may be considered after the initial utility has been tested with several projects.
+
+## 20. Version 2.0 Change Record
+
+Version 2.0 establishes the project-level configuration architecture.
+
+Changes from the previous design:
+
+- Removed Git system/global/local configuration as a source of utility preferences.
+- Established `.github-publish.conf` as the sole configuration file.
+- Made configuration project-specific and independent across repositories.
+- Explicitly permitted the configuration file to be committed and shared.
+- Established command-line arguments as the highest-precedence settings.
+- Kept credentials separate from project configuration.
+- Retained the existing repository creation, SSH publishing, safety, and modularity requirements.
+
+---
+
+**End of Specification — Version 2.0**
+
+**Implementation status:** Not yet authorized. This document defines the intended behavior and architecture; code generation will require separate approval.
