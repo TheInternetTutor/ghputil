@@ -5,5 +5,5 @@ visibility=public
 confirm_create=yes
 existing_repository=stop
 existing_remote=reuse
-branch=master
+branch=auto
 verify_after_publish=yes

@@ -65,7 +65,7 @@ main() {
         return 0
     fi
 
-    run_step publish_master || return $?
+    run_step publish_branch || return $?
     run_step verify_publication || return $?
     report_success
     cleanup_api_temp

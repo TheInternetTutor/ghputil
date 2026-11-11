@@ -4,7 +4,19 @@ inspect_local_repository() {
     local current_branch status
     current_branch="$(git -C "$PROJECT_ROOT" branch --show-current)" || { die "Could not determine the current branch."; return 1; }
     [[ -n "$current_branch" ]] || { die "Repository is in detached-HEAD state."; return 1; }
-    [[ "$current_branch" == "$BRANCH" ]] || { die "Current branch is '$current_branch'; version 1 supports '$BRANCH' only."; return 1; }
+
+    case "$current_branch" in
+        main|master) ;;
+        *) die "Unsupported current branch '$current_branch'. GHPUtil supports 'main' and 'master'."; return 1 ;;
+    esac
+
+    if [[ "$BRANCH" == auto ]]; then
+        BRANCH=$current_branch
+        log "Automatically selected branch: $BRANCH"
+    elif [[ "$current_branch" != "$BRANCH" ]]; then
+        die "Configured branch is '$BRANCH', but the current branch is '$current_branch'. Set branch=auto or configure the matching branch."
+        return 1
+    fi
 
     LOCAL_HEAD="$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null)" || { die "Repository has no commit history."; return 1; }
     LOCAL_HEAD_SHORT="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD)" || { die "Could not abbreviate the latest commit identifier."; return 1; }

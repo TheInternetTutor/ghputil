@@ -18,7 +18,7 @@ CFG_VISIBILITY=""
 CFG_CONFIRM_CREATE=yes
 CFG_EXISTING_REPOSITORY=stop
 CFG_EXISTING_REMOTE=reuse
-CFG_BRANCH=master
+CFG_BRANCH=auto
 CFG_VERIFY_AFTER_PUBLISH=yes
 
 usage() {
@@ -39,7 +39,7 @@ Configuration:
   PROJECT_DIRECTORY/.github-publish.conf
 
 Command-line options override project configuration.
-The utility publishes committed history on master only.
+The utility automatically detects main or master; branch=main or branch=master can be configured explicitly.
 USAGE
 }
 
@@ -128,7 +128,7 @@ resolve_effective_config() {
     validate_enum confirm_create "$CONFIRM_CREATE" yes no || return 1
     validate_enum existing_repository "$EXISTING_REPOSITORY" stop update || return 1
     validate_enum existing_remote "$EXISTING_REMOTE" reuse stop || return 1
-    validate_enum branch "$BRANCH" master || return 1
+    validate_enum branch "$BRANCH" auto main master || return 1
     validate_enum verify_after_publish "$VERIFY_AFTER_PUBLISH" yes no || return 1
 
     [[ "$REPOSITORY_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { die "Invalid repository name '$REPOSITORY_NAME'. Use letters, numbers, dots, underscores, or hyphens."; return 1; }

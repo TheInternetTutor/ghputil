@@ -1,4 +1,4 @@
-# GitHub Repository Publisher — v2.0
+# GitHub Repository Publisher — v2.1
 
 A modular Bash utility for creating GitHub repositories and publishing committed local Git history.
 
@@ -40,7 +40,7 @@ Supported keys:
 - `confirm_create=yes|no`
 - `existing_repository=stop|update`
 - `existing_remote=reuse|stop`
-- `branch=master`
+- `branch=auto|main|master`
 - `verify_after_publish=yes|no`
 
 Precedence: built-in defaults, project configuration, command-line arguments.
@@ -67,7 +67,7 @@ Each project receives a separate log directory, identified by its project name a
 
 ## Important behavior
 
-- Only the `master` branch is supported.
+- The `main` and `master` branches are supported. By default, the current branch is detected automatically (`branch=auto`). You may explicitly require `branch=main` or `branch=master`.
 - Only committed history is published.
 - Uncommitted and untracked files are not staged or committed.
 - An existing GitHub repository stops by default.

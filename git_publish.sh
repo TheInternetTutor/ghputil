@@ -42,7 +42,7 @@ verify_ssh_authentication() {
     export GIT_SSH_COMMAND
 }
 
-publish_master() {
+publish_branch() {
     local remote_line remote_sha
     remote_line="$(git -C "$PROJECT_ROOT" ls-remote origin "refs/heads/$BRANCH")" || { die "Could not inspect the remote branch."; return 1; }
     remote_sha="${remote_line%%[[:space:]]*}"
@@ -54,7 +54,7 @@ publish_master() {
             return 0
         fi
         git -C "$PROJECT_ROOT" merge-base --is-ancestor "$remote_sha" "$LOCAL_HEAD" || {
-            die "Remote history is not an ancestor of local master. Refusing to push."
+            die "Remote history is not an ancestor of local $BRANCH. Refusing to push."
             return 1
         }
     fi
