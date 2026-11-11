@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
-SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-DEST="${1:-/dir_bash/github_publish}"
+# Installer returns a status; it does not call exit or change the caller shell.
 
-mkdir -p "$DEST"
-for file in github_publish.sh config.sh validation.sh git_inspection.sh github_api.sh git_publish.sh; do
-    [[ -f "$SOURCE_DIR/$file" ]] || { printf 'Missing source file: %s\n' "$SOURCE_DIR/$file" >&2; exit 1; }
-    cp -- "$SOURCE_DIR/$file" "$DEST/$file"
-done
-chmod 700 "$DEST"
-chmod 700 "$DEST/github_publish.sh"
-chmod 600 "$DEST"/*.sh
-mkdir -p "$DEST/logs"
-chmod 700 "$DEST/logs"
-printf 'Installed GitHub publisher in: %s\n' "$DEST"
-printf 'Run: %s/github_publish.sh --help\n' "$DEST"
+install_main() {
+    local source_dir dest file
+    source_dir="$(realpath "${BASH_SOURCE[0]}")" || { printf 'ERROR: Cannot resolve installer path.\n' >&2; return 1; }
+    source_dir="${source_dir%/*}"
+    dest="${1:-/dir_bash/github_publish}"
+
+    mkdir -p "$dest" || { printf 'ERROR: Cannot create installation directory: %s\n' "$dest" >&2; return 1; }
+    for file in github_publish.sh config.sh validation.sh git_inspection.sh github_api.sh git_publish.sh; do
+        [[ -f "$source_dir/$file" ]] || { printf 'ERROR: Missing source file: %s\n' "$source_dir/$file" >&2; return 1; }
+        cp -- "$source_dir/$file" "$dest/$file" || { printf 'ERROR: Could not install %s\n' "$file" >&2; return 1; }
+    done
+    chmod 700 "$dest" || { printf 'ERROR: Could not set directory permissions.\n' >&2; return 1; }
+    chmod 700 "$dest/github_publish.sh" || { printf 'ERROR: Could not set main script permissions.\n' >&2; return 1; }
+    chmod 600 "$dest"/*.sh || { printf 'ERROR: Could not set module permissions.\n' >&2; return 1; }
+    mkdir -p "$dest/logs" || { printf 'ERROR: Could not create log directory.\n' >&2; return 1; }
+    chmod 700 "$dest/logs" || { printf 'ERROR: Could not set log directory permissions.\n' >&2; return 1; }
+    printf 'Installed GitHub publisher in: %s\n' "$dest"
+    printf 'Run: %s/github_publish.sh --help\n' "$dest"
+}
+
+install_main "$@"
