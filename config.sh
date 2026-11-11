@@ -2,6 +2,7 @@
 
 HELP=no
 DRY_RUN=no
+INIT_ONLY=no
 PROJECT_ARGUMENT=""
 CLI_NAME=""
 CLI_VISIBILITY=""
@@ -33,6 +34,7 @@ Options:
   --confirm                   Require interactive creation confirmation
   --existing stop|update      Behavior when the GitHub repository exists
   --dry-run                   Inspect and report without changing remote state
+  --init                      Create .github-publish.conf from the installed template and exit
   --help                      Show this help
 
 Configuration:
@@ -61,6 +63,8 @@ parse_arguments() {
                 CLI_EXISTING=$2; CLI_EXISTING_SET=yes; shift 2 ;;
             --dry-run)
                 DRY_RUN=yes; shift ;;
+            --init)
+                INIT_ONLY=yes; shift ;;
             --help|-h)
                 HELP=yes; shift ;;
             --*)
@@ -75,11 +79,85 @@ parse_arguments() {
     [[ "$HELP" == yes ]] && return 0
     [[ -n "$PROJECT_ARGUMENT" ]] || { die "A project directory argument is required."; return 1; }
     [[ "$CLI_YES" != yes || "$CLI_CONFIRM_SET" != yes ]] || { die "Do not combine --yes and --confirm."; return 1; }
+    if [[ "$INIT_ONLY" == yes ]]; then
+        [[ "$DRY_RUN" != yes && "$CLI_NAME_SET" != yes && "$CLI_VISIBILITY_SET" != yes && \
+           "$CLI_YES" != yes && "$CLI_CONFIRM_SET" != yes && "$CLI_EXISTING_SET" != yes ]] || {
+            die "--init cannot be combined with publishing options."
+            return 1
+        }
+    fi
+}
+
+prepare_project_config() {
+    CONFIG_FILE="$PROJECT_ROOT/.github-publish.conf"
+    CONFIG_TEMPLATE="$SCRIPT_DIR/github-publish.conf.example"
+
+    if [[ -e "$CONFIG_FILE" || -L "$CONFIG_FILE" ]]; then
+        [[ -f "$CONFIG_FILE" ]] || { die "Configuration path exists but is not a regular file: $CONFIG_FILE"; return 1; }
+        if [[ "$INIT_ONLY" == yes ]]; then
+            log "Project configuration already exists; it was not overwritten: $CONFIG_FILE"
+            return 0
+        fi
+        return 0
+    fi
+
+    [[ -f "$CONFIG_TEMPLATE" && -r "$CONFIG_TEMPLATE" ]] || {
+        die "Configuration template is missing or unreadable: $CONFIG_TEMPLATE"
+        return 1
+    }
+
+    if [[ "$INIT_ONLY" != yes ]]; then
+        [[ -t 0 ]] || {
+            die "Project configuration is missing and no interactive terminal is available. Run with --init or create $CONFIG_FILE manually."
+            return 1
+        }
+        printf "Configuration file not found. Create it from the default template? [Y/n] "
+        local answer
+        IFS= read -r answer || { die "Could not read configuration-initialization response."; return 1; }
+        case "$answer" in
+            ""|[Yy]|[Yy][Ee][Ss]) ;;
+            [Nn]|[Nn][Oo])
+                log "Configuration initialization declined; publication cancelled."
+                return 1 ;;
+            *)
+                die "Please answer yes or no. No configuration was created."
+                return 1 ;;
+        esac
+    fi
+
+    local temp_file
+    temp_file="$(mktemp "$PROJECT_ROOT/.github-publish.conf.tmp.XXXXXX")" || {
+        die "Could not create a temporary configuration file in $PROJECT_ROOT."
+        return 1
+    }
+
+    if ! cp -- "$CONFIG_TEMPLATE" "$temp_file" || ! chmod 644 "$temp_file"; then
+        rm -f -- "$temp_file"
+        die "Could not prepare the project configuration from the template."
+        return 1
+    fi
+
+    # Linking the completed temporary file creates the destination atomically
+    # and cannot overwrite a file created concurrently by another process.
+    if ! ln -- "$temp_file" "$CONFIG_FILE" 2>/dev/null; then
+        rm -f -- "$temp_file"
+        if [[ -f "$CONFIG_FILE" ]]; then
+            log "Project configuration appeared during initialization; existing file was preserved."
+            return 0
+        fi
+        die "Could not create project configuration: $CONFIG_FILE"
+        return 1
+    fi
+    rm -f -- "$temp_file"
+    log "Created project configuration from template: $CONFIG_FILE"
+
+    if [[ "$INIT_ONLY" == yes ]]; then
+        log "Initialization complete. No GitHub repository actions were performed."
+    fi
 }
 
 load_project_config() {
-    CONFIG_FILE="$PROJECT_ROOT/.github-publish.conf"
-    [[ -f "$CONFIG_FILE" ]] || { log "No project configuration file found; using defaults."; return 0; }
+    [[ -f "$CONFIG_FILE" ]] || { die "Project configuration is unavailable: $CONFIG_FILE"; return 1; }
 
     log "Loading project configuration: $CONFIG_FILE"
     local line key value lineno=0

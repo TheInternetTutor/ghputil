@@ -1,4 +1,4 @@
-# GitHub Repository Publisher — v2.1
+# GitHub Repository Publisher — v2.2
 
 A modular Bash utility for creating GitHub repositories and publishing committed local Git history.
 
@@ -8,31 +8,43 @@ From this package directory, run:
 
     bash install.sh
 
-The default installation directory is `/dir_bash/github_publish`. An alternate destination may be supplied:
+The default installation directory is `/dir_bash/ghputil`. An alternate destination may be supplied:
 
     bash install.sh /some/other/location
 
 ## Usage
 
-    /dir_bash/github_publish/github_publish.sh /path/to/project
+The utility can be sourced from an interactive Bash session, so its scripts do not need executable permissions and its installation directory does not need to be added to `PATH`:
+
+    source /dir_bash/ghputil/github_publish.sh /path/to/project
+
+A shell alias can shorten this further. For example, add this to your Bash startup file:
+
+    alias GitHubPublish='source /dir_bash/ghputil/github_publish.sh'
+
+Then invoke it from any Git repository with `GitHubPublish ./`. If a project has no `.github-publish.conf`, the utility offers to create one from the installed template (default answer: yes), then continues with publication.
+
+Initialize a project's configuration without publishing:
+
+    source /dir_bash/ghputil/github_publish.sh --init /path/to/project
 
 Preview the workflow without creating or pushing:
 
-    /dir_bash/github_publish/github_publish.sh --dry-run /path/to/project
+    source /dir_bash/ghputil/github_publish.sh --dry-run /path/to/project
 
 Override settings for one execution:
 
-    /dir_bash/github_publish/github_publish.sh --visibility private --yes /path/to/project
+    source /dir_bash/ghputil/github_publish.sh --visibility private --yes /path/to/project
 
 Update an existing compatible GitHub repository:
 
-    /dir_bash/github_publish/github_publish.sh --existing update /path/to/project
+    source /dir_bash/ghputil/github_publish.sh --existing update /path/to/project
 
 ## Project configuration
 
-Copy `github-publish.conf.example` into a project root and rename it:
+The utility creates `.github-publish.conf` from the installed `github-publish.conf.example` template when the project configuration is missing. Normal execution asks first and defaults to yes. Use `--init` to create the file and exit without attempting publication. Initialization never overwrites an existing file; it also fails safely if the template is missing or unreadable.
 
-    .github-publish.conf
+The template is resolved relative to the installed utility, not the current working directory. In non-interactive execution, a missing configuration causes a clear error; initialize it explicitly with `--init` first.
 
 Supported keys:
 
@@ -61,7 +73,7 @@ The PAT file should be readable only by its owner. Never share it, commit it, or
 
 Execution logs are stored centrally under:
 
-    /dir_bash/github_publish/logs/
+    /dir_bash/ghputil/logs/
 
 Each project receives a separate log directory, identified by its project name and a path checksum.
 
@@ -93,19 +105,12 @@ The utility does not call `exit` from its error-reporting function and does not
 change the caller's `errexit` or other shell options. Errors are returned
 through the functions to the main workflow, which stops and returns a nonzero
 status. Temporary API credential files are cleaned up on both success and
-failure. When running from an already-open Cygwin terminal, the terminal remains
-available after the utility returns. Avoid launching the script by double-
-clicking it in a way that creates a disposable terminal window.
+failure. Scripts are installed without executable permissions; source the main
+script from an existing Bash session or invoke it explicitly through Bash.
 
 The main script resolves its own location with `realpath` and checks that
 `realpath` is available as a dependency.
 
-If you want to invoke it from an existing interactive Bash session and keep
-running in that same shell after the command returns, you may source it:
-
-    source /dir_bash/github_publish/github_publish.sh /path/to/project
-
 The sourced form returns a status to the current shell; it does not call
-`exit`. The normal executable form also avoids `exit` internally and returns a
-nonzero process status on failure. For the most predictable terminal behavior,
-start Cygwin yourself and run either form from that open terminal.
+`exit`. For a convenient alias, define one in your Bash startup file, pointing
+to the absolute path of the main script.

@@ -15,6 +15,11 @@ main() {
     log "GitHub publisher starting."
     log "Project: $PROJECT_ROOT"
 
+    run_step prepare_project_config || return $?
+    if [[ "$INIT_ONLY" == yes ]]; then
+        return 0
+    fi
+
     run_step load_project_config || return $?
     run_step resolve_effective_config || return $?
     run_step validate_dependencies || return $?
