@@ -80,7 +80,7 @@ GHPUtil is designed to be sourced. Its shell scripts do not need executable perm
 
 ## Documentation map
 
-The detailed documentation is in [`README/INDEX.md`](README/INDEX.md). It covers the design, architecture, configuration, credentials, Git safeguards, GitHub repository behavior, workflow, command-line options, installation, and troubleshooting.
+The detailed documentation is in [`README/INDEX.md`](README/INDEX.md). Start with the [program-flow diagrams](README/015_program_flow.md) for a visual overview, then consult the modules covering design, architecture, configuration, credentials, Git safeguards, GitHub repository behavior, workflow, command-line options, installation, and troubleshooting.
 
 ## Safety summary
 

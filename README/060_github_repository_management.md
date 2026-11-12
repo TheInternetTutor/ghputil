@@ -1,4 +1,4 @@
-# 060 — GitHub Repository Management
+# GitHub Repository Management
 
 ## Repository name
 

@@ -1,4 +1,4 @@
-# 010 — Purpose and Design Principles
+# Purpose and Design Principles
 
 ## Purpose
 

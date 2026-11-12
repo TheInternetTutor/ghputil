@@ -1,4 +1,4 @@
-# 070 — Publishing Workflow
+# Publishing Workflow
 
 ## Normal execution sequence
 

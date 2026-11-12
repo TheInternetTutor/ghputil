@@ -1,4 +1,4 @@
-# 040 — Authentication and Security
+# Authentication and Security
 
 ## Two separate authentication mechanisms
 

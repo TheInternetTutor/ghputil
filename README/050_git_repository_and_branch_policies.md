@@ -1,4 +1,4 @@
-# 050 — Git Repository and Branch Policies
+# Git Repository and Branch Policies
 
 ## Project discovery and prerequisites
 

@@ -1,4 +1,4 @@
-# 100 — Troubleshooting and Limitations
+# Troubleshooting and Limitations
 
 ## Configuration is missing
 

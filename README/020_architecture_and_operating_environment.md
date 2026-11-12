@@ -1,4 +1,4 @@
-# 020 — Architecture and Operating Environment
+# Architecture and Operating Environment
 
 ## Supported environment
 

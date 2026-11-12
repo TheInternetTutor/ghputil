@@ -1,4 +1,4 @@
-# 030 — Configuration and Settings
+# Configuration and Settings
 
 ## Project configuration file
 
