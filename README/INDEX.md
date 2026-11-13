@@ -5,7 +5,7 @@ This directory contains the detailed documentation for GHPUtil. The root [`READM
 ## Modules
 
 - [`010_purpose_and_design_principles.md`](010_purpose_and_design_principles.md) — Original problem, goals, conservative operating principles, and the evolution from specification to working utility.
-- [`015_program_flow.md`](015_program_flow.md) — Landscape-oriented Mermaid diagrams showing startup, configuration, local validation, GitHub repository decisions, SSH setup, branch safety, publishing, and verification.
+- [`015_program_flow.md`](015_program_flow.md) — Dark-themed, landscape-oriented Mermaid diagrams with explicit in-subgraph handoff and receiving-entry nodes, showing startup, configuration, local validation, GitHub repository decisions, SSH setup, branch safety, publishing, and verification.
 - [`020_architecture_and_operating_environment.md`](020_architecture_and_operating_environment.md) — Supported environment, component responsibilities, dependencies, and execution model.
 - [`030_configuration_and_settings.md`](030_configuration_and_settings.md) — Project configuration, template initialization, supported keys, defaults, precedence, and validation.
 - [`040_authentication_and_security.md`](040_authentication_and_security.md) — PAT storage and handling, GitHub API access, SSH transport, and credential separation.
