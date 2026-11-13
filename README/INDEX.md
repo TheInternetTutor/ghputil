@@ -15,6 +15,11 @@ This directory contains the detailed documentation for GHPUtil. The root [`READM
 - [`080_command_line_reference.md`](080_command_line_reference.md) — Complete command-line syntax, options, combinations, and examples.
 - [`090_installation_and_maintenance.md`](090_installation_and_maintenance.md) — Installation, sourcing, aliases, logs, permissions, upgrades, and operational checks.
 - [`100_troubleshooting_and_limitations.md`](100_troubleshooting_and_limitations.md) — Common failure conditions, diagnostic guidance, known boundaries, and deferred capabilities.
+- [`110_function_call_graph.md`](110_function_call_graph.md) — Guide to three alternative renderings of the implementation-level function call graph.
+- [`111_function_call_graph_vertical.md`](111_function_call_graph_vertical.md) — Complete, vertically arranged call graph.
+- [`112_function_call_graph_split.md`](112_function_call_graph_split.md) — Three smaller diagrams: orchestration, configuration/repository inspection, and API/publication.
+- [`113_function_call_graph_layered.md`](113_function_call_graph_layered.md) — Single graph grouped by responsibility layers, with a source-file key.
+- [`120_source_file_dependency_graph.md`](120_source_file_dependency_graph.md) — Package-level source, template, installer-copy, and project-configuration dependencies.
 
 ## Reading paths
 
