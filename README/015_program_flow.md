@@ -27,7 +27,7 @@ flowchart TB
     B2 -- Yes --> B8{--init only?}
     B2 -- No --> B3{Interactive run or --init?}
     B3 -- Interactive --> B4[Ask to create from template]
-    B3 -- --init --> B6[Create configuration from template]
+    B3 -- |--init| --> B6[Create configuration from template]
     B3 -- Non-interactive --> BX([STOP: Explain initialization options])
     B4 --> B7{Accepted?}
     B7 -- Yes --> B6
