@@ -14,7 +14,7 @@ Test SSH authentication independently using the same SSH configuration that GHPU
 
 ## Existing repository causes a stop
 
-This is the default safety policy. If the repository is the intended one and you want to update it, use `--existing update` or set `existing_repository=update` in the project config. The remote branch must still be a compatible ancestor of the local commit. `--yes` alone does not change this policy.
+This is the default safety policy. If the repository is the intended one and you want to update it, use `--existing update` or set `existing_repository=update` in the project config. If remote-only commits exist, GHPUtil prepares a recovery snapshot and stops rather than pushing over them. `--yes` alone does not change this policy.
 
 ## Origin points to another repository
 
@@ -24,9 +24,13 @@ GHPUtil intentionally stops rather than replacing `origin`. Inspect the remote w
 
 Only `main` and `master` are supported. With `branch=auto`, GHPUtil selects the current supported branch. If the configuration explicitly names a different supported branch than the current branch, set it to `auto` or change it to match the current branch. GHPUtil does not switch branches.
 
-## Push rejected due to remote history
+## Remote contains commits missing locally
 
-GHPUtil refuses to force-push. If the remote commit is not an ancestor of local HEAD, stop and inspect both histories manually. Resolve the history relationship using normal Git operations, review the resulting commits, then run GHPUtil again. The utility does not merge or rewrite history automatically.
+With `--existing update`, GHPUtil retrieves the remote branch objects and creates an incremental recovery bundle when the remote has commits missing locally, whether the branch is simply ahead or histories have diverged. The bundle is extracted into `GHPUtil-Remote/` for manual comparison. Review `GHPUtil-Remote-Manifest.txt` for changed, added, renamed, and deleted paths. GHPUtil does not merge, rebase, reset, or overwrite local files.
+
+If `GHPUtil-Remote/` or `GHPUtil-Remote.bundle` already exists, GHPUtil refuses to overwrite it. Review and move or remove the previous recovery artifacts before retrying. If extraction fails, the bundle is retained for diagnosis.
+
+If local and remote histories have no common ancestor, GHPUtil stops without creating a recovery snapshot. Resolve that repository relationship manually.
 
 ## Dry-run does not create a repository
 
@@ -38,7 +42,9 @@ That is intentional. Dry-run may authenticate to GitHub and inspect the reposito
 - Uses one authenticated GitHub account at a time, as identified by the PAT.
 - The PAT is stored as a plaintext file. Encryption or credential-manager integration is not implemented.
 - Organization repository creation, multiple-account selection, branch protection, topics, teams, webhooks, GUI support, scheduled synchronization, and automated conflict resolution are outside the current scope.
-- It is a publisher, not a bidirectional synchronization or backup system.
+- It is a publisher with a one-way remote-change extraction aid, not a bidirectional synchronization or backup system.
+- Remote recovery requires a common ancestor. Unrelated histories are rejected.
+- The recovery directory is not automatically added to `.gitignore`; add `GHPUtil-Remote/` yourself if you want it excluded from Git status.
 - ShellCheck was not available during the v2.2 validation; syntax and functional tests were performed separately.
 
 ## Diagnostic information to retain

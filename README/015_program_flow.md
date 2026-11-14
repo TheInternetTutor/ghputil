@@ -123,9 +123,9 @@ flowchart TB
 
 **Execution sequence:** Stage A → Local project checks → GitHub API checks → Repository decision → Stage C's Remote preparation. `C5`, `D5`, and `E9` are explicit handoff nodes; the receiving subgraphs identify their entry points. The repository-decision branches either stop under the `stop` policy or continue to Stage C. A dry run records planned creation rather than creating the remote repository.
 
-## Stage C — SSH, branch safety, publication, and verification
+## Stage C — SSH, remote recovery, publication, and verification
 
-Repository administration uses HTTPS and the PAT; Git transport uses SSH. Before a push, GHPUtil verifies the intended `origin`, confirms SSH authentication, and inspects the remote branch. It only performs a normal push when the history relationship is safe. The groups are declared in reverse order to render as Remote preparation, Branch safety, and Completion.
+Repository administration uses HTTPS and the PAT; Git transport uses SSH. Before a push, GHPUtil verifies the intended `origin`, confirms SSH authentication, and inspects the remote branch. It retrieves remote objects into a temporary ref before ancestry checks. If remote-only commits exist, it creates and verifies an incremental bundle, extracts only the remote-changed file versions into `GHPUtil-Remote/`, writes a manifest, deletes the bundle only after successful extraction, and stops for manual comparison. A normal push remains available when the remote is an ancestor of local HEAD. The groups are declared in reverse order to render as Remote preparation, Branch safety, and Completion.
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#0b1220","primaryColor":"#26364d","primaryTextColor":"#e6edf7","primaryBorderColor":"#7186a6","lineColor":"#8293ad","secondaryColor":"#1b2a40","tertiaryColor":"#172338","clusterBkg":"#172338","clusterBorder":"#526783","fontFamily":"Arial, sans-serif"}}}%%
@@ -146,12 +146,15 @@ flowchart TB
     G0([ENTRY: Branch safety])
     G0 --> G1{Remote branch exists?}
     G1 -- No --> G5[Normal push is eligible]
-    G1 -- Yes --> G2{Remote commit equals local HEAD?}
-    G2 -- Yes --> G3[No push needed]
-    G2 -- No --> G4{Remote commit is ancestor of local HEAD?}
+    G1 -- Yes --> G2[Fetch remote commit into temporary ref]
+    G2 --> G3{Remote equals local HEAD?}
+    G3 -- Yes --> G7[[NEXT SUBGRAPH: Completion]]
+    G3 -- No --> G4{Remote is ancestor of local HEAD?}
     G4 -- Yes --> G5
-    G4 -- No --> G6([STOP: Refuse divergent or unrelated history])
-    G3 --> G7[[NEXT SUBGRAPH: Completion]]
+    G4 -- No --> G6[Create incremental bundle after common ancestor]
+    G6 --> G8[Verify bundle and extract remote-changed files]
+    G8 --> G9[Write manifest; delete bundle after verification]
+    G9 --> G10([STOP: Ready for manual comparison and integration])
     G5 --> G7
   end
   subgraph F[Remote preparation]
@@ -171,11 +174,11 @@ flowchart TB
   classDef secure fill:#17434a,stroke:#4e9b9c,color:#e2ffff,stroke-width:1px;
   classDef handoff fill:#40305c,stroke:#a78bd4,color:#f2eaff,stroke-width:2px;
   classDef endpoint fill:#17434a,stroke:#4e9b9c,color:#e2ffff,stroke-width:2px;
-  class F1,F2,G2,G4,G5,H1,H3,H4,H5 process;
+  class F1,F2,G2,G6,G8,G9,G5,H1,H3,H4,H5 process;
   class F5 secure;
-  class F1A,F3,G1,H2 decision;
+  class F1A,F3,G1,G3,G4,H2 decision;
   class F6,G7 handoff;
-  class F0,G0,H0,FSTOP,F4,G6,H6 endpoint;
+  class F0,G0,H0,FSTOP,F4,G10,H6 endpoint;
   style F fill:#142238,stroke:#526783,stroke-width:1px,color:#e6edf7
   style G fill:#18283d,stroke:#526783,stroke-width:1px,color:#e6edf7
   style H fill:#1c2b42,stroke:#526783,stroke-width:1px,color:#e6edf7
@@ -183,7 +186,7 @@ flowchart TB
 
 **Execution sequence:** Stage B → Remote preparation → Branch safety → Completion. `F6` and `G7` explicitly identify the next subgraph, whose entry node is marked. The workflow ends at `H6`; the dry-run and safety-refusal branches terminate earlier. No inter-subgraph arrows are used.
 
-**Terminal outcomes:** successful publication (with optional post-push verification), no push needed because the remote already matches local HEAD, dry-run report, or a safe refusal. GHPUtil does not force-push, merge, rewrite history, stage files, or create commits.
+**Terminal outcomes:** successful publication (with optional post-push verification), no push needed because the remote already matches local HEAD, remote recovery snapshot ready for manual integration, dry-run report, or a safe refusal. GHPUtil does not force-push, merge, rewrite history, stage files, or create commits.
 
 ## Reading the component documentation
 

@@ -4,6 +4,8 @@
 # an interactive shell if this script is sourced.
 
 main() {
+    RECOVERY_CREATED=no
+    RECOVERY_REF=""
     run_step parse_arguments "$@" || return $?
     if [[ "$HELP" == yes ]]; then
         usage

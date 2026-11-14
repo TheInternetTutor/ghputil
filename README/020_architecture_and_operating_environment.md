@@ -10,7 +10,7 @@ The utility is developed for:
 - `curl` for GitHub REST API requests.
 - `ssh` for Git transport and authentication checks.
 - `realpath` for resolving the installed script location.
-- Standard Cygwin utilities used by the scripts, including `sed`, `tr`, `head`, `mktemp`, `chmod`, `cp`, `ln`, and `rm`.
+- Standard Cygwin utilities used by the scripts, including `sed`, `tr`, `head`, `mktemp`, `chmod`, `cp`, `ln`, `rm`, `tar`, `find`, and `wc`.
 
 GitHub CLI (`gh`) is not required.
 
@@ -21,7 +21,7 @@ GitHub CLI (`gh`) is not required.
 - `validation.sh` — shared validation, dependency checks, logging, and error helpers.
 - `git_inspection.sh` — project-root discovery, local Git state, branch, identity, and `origin` inspection.
 - `github_api.sh` — PAT handling, API requests, account identification, repository lookup, and creation.
-- `git_publish.sh` — origin configuration, SSH authentication, push, and post-push verification.
+- `git_publish.sh` — origin configuration, SSH authentication, remote ancestry checks, incremental-bundle recovery extraction, push, and post-push verification.
 - `github-publish.conf.example` — default project-configuration template.
 - `install.sh` — installation and permission setup.
 - `README.md` — quick start.

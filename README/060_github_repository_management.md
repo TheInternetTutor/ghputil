@@ -23,7 +23,7 @@ The default policy is `existing_repository=stop`. GHPUtil reports the existing r
 - `existing_repository=update` in the project configuration; or
 - `--existing update` on the command line.
 
-`--yes` is not an authorization to update an existing repository. If updating is authorized, GHPUtil checks the target branch. If the remote branch is already at the local commit, no push is needed. Otherwise, the remote commit must be an ancestor of the local HEAD. Divergent or unrelated history is rejected. Pushes are ordinary, non-force pushes.
+`--yes` is not an authorization to update an existing repository. If updating is authorized, GHPUtil checks the target branch. If the remote branch is already at the local commit, no push is needed. If the remote commit is an ancestor of local HEAD, a normal push is eligible. If remote-only commits exist—whether the remote is ahead or histories have diverged—GHPUtil creates an incremental recovery bundle and extracts the remote-changed files into `GHPUtil-Remote/` for manual comparison. It then stops without pushing or integrating the remote changes. Unrelated histories are rejected. Pushes are ordinary, non-force pushes.
 
 ## Origin remote policy
 
@@ -40,4 +40,4 @@ Existing matching HTTPS and SSH forms are normalized for comparison. The actual 
 
 ## No force-push and no history rewriting
 
-GHPUtil does not force-push, reset the remote, rewrite history, or resolve conflicts automatically. If the remote and local histories cannot be reconciled by a safe fast-forward push, the operation stops and leaves the user to resolve the repository state manually.
+GHPUtil does not force-push, reset the remote, rewrite history, or resolve conflicts automatically. When remote-only commits exist, the recovery snapshot gives the user the remote-side file versions and a manifest for manual comparison and integration. GHPUtil does not attempt to reconcile those histories itself.

@@ -75,7 +75,7 @@ initialize_logging() {
 
 validate_dependencies() {
     local command
-    for command in git curl ssh awk sed cksum mktemp realpath tr cp chmod ln rm; do
+    for command in git curl ssh awk sed cksum mktemp realpath tr cp chmod ln rm tar find wc; do
         command -v "$command" >/dev/null 2>&1 || {
             die "Required command is missing: $command"
             return 1

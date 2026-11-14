@@ -17,9 +17,10 @@ A normal publishing run follows this general order:
 11. If needed, resolve visibility and obtain authorization, then create the empty repository.
 12. Add or reuse the matching SSH `origin`.
 13. Verify SSH authentication to GitHub.
-14. Inspect the remote branch and publish the selected local branch when safe.
-15. Verify that the remote branch points to the local commit when verification is enabled.
-16. Report the result and clean up temporary API credential files.
+14. Inspect the remote branch and retrieve its commit objects when the branch exists.
+15. Compare local and remote ancestry. Publish normally when the remote is an ancestor of local HEAD; create a remote recovery snapshot and stop when remote-only commits exist.
+16. Verify a successful push when verification is enabled.
+17. Report the result and clean up temporary API credential files.
 
 The workflow stops when a required precondition or safety check fails. It does not attempt automatic recovery by rewriting local or remote history.
 
@@ -29,7 +30,16 @@ A new repository is created only after the account, repository name, visibility,
 
 ## Existing repository path
 
-The default existing-repository policy stops before pushing. With explicit `update` authorization, GHPUtil checks the remote branch. If it already points to local HEAD, it reports that no push is necessary. If the remote commit is an ancestor of local HEAD, it performs a normal push. If not, it refuses to push.
+The default existing-repository policy stops before pushing. With explicit `update` authorization, GHPUtil checks the remote branch and fetches its objects into a temporary private ref without checking out or merging them.
+
+- If remote HEAD equals local HEAD, no push is necessary.
+- If remote HEAD is an ancestor of local HEAD, GHPUtil performs a normal push.
+- If remote HEAD is ahead of local HEAD, GHPUtil creates an incremental bundle containing commits after the common ancestor.
+- If histories have diverged, the bundle contains the remote-only commits after the common ancestor; local-only commits are not included.
+
+For either remote-ahead case, GHPUtil verifies the bundle in a temporary shared repository, fetches from the bundle, and extracts only remote-changed file versions into `PROJECT_ROOT/GHPUtil-Remote/`, preserving their repository-relative paths. `GHPUtil-Remote-Manifest.txt` records the branch, common ancestor, remote commit, local commit at detection, and Git change-status list. Deleted paths are recorded in the manifest because deleted files have no remote file contents to extract. Renames are represented by Git's name-status output and the new remote path is extracted.
+
+The temporary bundle is deleted only after extraction and path verification succeed. If an operation fails after bundle creation, the bundle is retained for diagnosis. Existing `GHPUtil-Remote/` directories and bundle files are never overwritten; remove or rename them yourself before another recovery attempt. After extraction, GHPUtil stops with: “The remote bundle is ready for comparison and integration with the local repository.” It does not push, merge, rebase, reset, stage, commit, or overwrite local project files in this recovery path.
 
 ## Dry-run behavior
 
@@ -47,4 +57,4 @@ Each project has a separate log directory under the central installation's `logs
 
 ## What the workflow deliberately does not do
 
-It does not stage or commit files, clean the working tree, switch branches, replace unrelated remotes, force-push, merge histories, create GitHub initialization commits, or automatically resolve conflicts.
+It does not stage or commit files, clean the working tree, switch branches, replace unrelated remotes, force-push, merge histories, create GitHub initialization commits, or automatically resolve conflicts. The remote recovery directory is deliberately left for manual comparison and integration; add `GHPUtil-Remote/` to `.gitignore` yourself if appropriate.

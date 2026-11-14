@@ -18,7 +18,7 @@ GHPUtil centralizes that workflow and applies the same safeguards to each projec
 2. **Committed history only.** It never stages, commits, stashes, or discards files. Uncommitted and untracked content stays local.
 3. **Stop safely by default.** Existing GitHub repositories stop unless updating is explicitly authorized.
 4. **No silent remote replacement.** An unrelated `origin` is a conflict, not an invitation to rewrite configuration.
-5. **No force-push.** Existing remote history must be compatible with the local branch.
+5. **No force-push.** A normal push is allowed only when remote history is an ancestor of local HEAD; remote-only commits are extracted for manual comparison instead of being overwritten.
 6. **Explicit authorization.** Repository creation and existing-repository updates are separate decisions. `--yes` does not authorize an update.
 7. **Separate credentials by purpose.** PAT for API administration; SSH identity for Git transport; project config for preferences only.
 8. **Preserve history.** Newly created GitHub repositories are empty (`auto_init=false`) so local history can be pushed without an automatically generated initial commit.
@@ -27,9 +27,9 @@ GHPUtil centralizes that workflow and applies the same safeguards to each projec
 
 ## Evolution from specification to implementation
 
-The former v2.0 document was a technical specification, not a description of a finished release. It proposed a `master`-only branch policy and assumed configuration was already present or could be omitted. The implemented v2.1 branch behavior supports both `main` and `master`, automatically selecting the current branch by default. Version 2.2 adds safe project-configuration initialization through an interactive prompt and `--init`.
+The former v2.0 document was a technical specification, not a description of a finished release. It proposed a `master`-only branch policy and assumed configuration was already present or could be omitted. The implemented v2.1 branch behavior supports both `main` and `master`, automatically selecting the current branch by default. Version 2.2 adds safe project-configuration initialization through an interactive prompt and `--init`. The current recovery workflow adds incremental remote-bundle extraction when remote-only commits are detected.
 
-This documentation describes the v2.2 implementation. Historical design statements are retained only when they explain why a safeguard or architectural choice exists; superseded proposals are not presented as current behavior.
+This documentation describes the current implementation. Historical design statements are retained only when they explain why a safeguard or architectural choice exists; superseded proposals are not presented as current behavior.
 
 ## Intended use
 

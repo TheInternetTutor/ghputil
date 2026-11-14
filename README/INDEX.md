@@ -27,4 +27,4 @@ This directory contains the detailed documentation for GHPUtil. The root [`READM
 
 ## Version and historical context
 
-The former v2.0 technical specification has been consolidated into these modules rather than retained as a separate competing README. Its original design intent is preserved where still relevant. Where the implemented v2.2 behavior differs from the v2.0 proposal, this documentation describes the implemented behavior and identifies the historical distinction where useful.
+The former v2.0 technical specification has been consolidated into these modules rather than retained as a separate competing README. Its original design intent is preserved where still relevant. Where implemented behavior differs from the v2.0 proposal, this documentation describes the implemented behavior and identifies the historical distinction where useful. The current workflow also includes incremental remote-bundle extraction for manual comparison when remote-only commits are detected.

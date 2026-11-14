@@ -111,9 +111,11 @@ venv/
 config.local.*
 *.diff
 *.zip
+
 # Incoming Git bundle and its applied-content fingerprint
 z_update_bundle/
 *.bundle
 .update.bundle.sha256
 .update.bundle.sha256.tmp
 
+GHPUtil-Remote/

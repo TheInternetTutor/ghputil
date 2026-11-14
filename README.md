@@ -50,7 +50,9 @@ The default policy is to stop when the intended GitHub repository already exists
 source /dir_bash/ghputil/github_publish.sh --existing update /path/to/project
 ```
 
-The update still requires compatible history. GHPUtil refuses unrelated histories and never force-pushes. An existing `origin` must point to the intended repository; an unrelated remote is never replaced.
+The update checks the relationship between local and remote history. If the remote branch contains commits missing locally, GHPUtil creates and verifies an incremental Git bundle, extracts only the remote-changed file versions into `GHPUtil-Remote/` at the project root, records additions/changes/deletions in a manifest, deletes the temporary bundle after successful extraction, and stops. It does not merge or overwrite local files. If the remote is behind local, a normal push remains eligible. An existing `origin` must point to the intended repository; an unrelated remote is never replaced.
+
+After reviewing and integrating the extracted files yourself, add `GHPUtil-Remote/` to the project's `.gitignore` if you do not want the comparison directory tracked.
 
 ### 5. Preview before publishing
 
@@ -89,6 +91,7 @@ The detailed documentation is in [`README/INDEX.md`](README/INDEX.md). Start wit
 - Existing GitHub repositories stop by default. Updating requires explicit `--existing update` or configuration.
 - An unrelated `origin` is never replaced.
 - No force-push is performed.
+- Remote-only changes are extracted to `GHPUtil-Remote/` for manual comparison; GHPUtil never merges them automatically.
 - New GitHub repositories are created without an automatic README, license, or `.gitignore`.
 - The project configuration contains preferences, never credentials.
 
