@@ -249,7 +249,7 @@ report_dry_run() {
 }
 
 report_success() {
-    log "PUBLICATION SUCCESSFUL"
+    log "Repository published successfully."
     log "Repository: https://github.com/$GITHUB_LOGIN/$REPOSITORY_NAME"
     log "Visibility: ${VISIBILITY:-existing repository}"
     log "Branch: $BRANCH"

@@ -111,7 +111,7 @@ prepare_project_config() {
             die "Project configuration is missing and no interactive terminal is available. Run with --init or create $CONFIG_FILE manually."
             return 1
         }
-        printf "Configuration file not found. Create it from the default template? [Y/n] "
+        log_prompt "Configuration file not found. Create it from the default template? [Y/n] "
         local answer
         IFS= read -r answer || { die "Could not read configuration-initialization response."; return 1; }
         case "$answer" in
@@ -218,7 +218,7 @@ resolve_visibility() {
     [[ -n "$VISIBILITY" ]] && return 0
     [[ "$DRY_RUN" == yes ]] && { log "Visibility is not configured; a real run would prompt for public or private."; return 0; }
     [[ -t 0 ]] || { die "Visibility is not configured and no interactive terminal is available. Set visibility in .github-publish.conf or use --visibility."; return 1; }
-    printf "Repository visibility [public/private]: "
+    log_prompt "Repository visibility [public/private]: "
     IFS= read -r VISIBILITY || { die "Could not read repository visibility."; return 1; }
     validate_enum visibility "$VISIBILITY" public private
 }
@@ -227,7 +227,7 @@ confirm_repository_creation() {
     [[ "$CONFIRM_CREATE" == no ]] && { log "Repository creation authorized by configuration or command line."; return 0; }
     [[ "$DRY_RUN" == yes ]] && { log "DRY RUN: a real run would request confirmation before creating the repository."; return 0; }
     [[ -t 0 ]] || { die "Repository creation requires confirmation. Use --yes or set confirm_create=no."; return 1; }
-    printf "Create GitHub repository '%s/%s' (%s)? [y/N] " "$GITHUB_LOGIN" "$REPOSITORY_NAME" "$VISIBILITY"
+    log_prompt "Create GitHub repository '$GITHUB_LOGIN/$REPOSITORY_NAME' ($VISIBILITY)? [y/N] "
     local answer
     IFS= read -r answer || { die "Could not read repository-creation confirmation."; return 1; }
     [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]] || { die "Repository creation was not authorized."; return 1; }

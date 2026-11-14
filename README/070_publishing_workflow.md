@@ -55,6 +55,11 @@ When `verify_after_publish=yes` (default), GHPUtil queries the remote branch aft
 
 Each project has a separate log directory under the central installation's `logs/` directory. Logs record workflow steps and diagnostic messages but must not expose the PAT. Temporary API configuration and response files are removed during normal cleanup paths.
 
+### Terminal message colors
+
+The logger colors only the leading timestamp; message text is left unchanged. Success uses a green background, warnings and cancellation use yellow, errors use red, informational messages use cyan, progress messages use blue, and local-change notices use magenta. Selected messages use the foreground combinations reviewed for readability. Interactive questions use a yellow timestamp background with red foreground. ANSI sequences are emitted only when standard output is a terminal and `NO_COLOR` is not set. Persistent log files always contain plain text without escape sequences.
+
+
 ## What the workflow deliberately does not do
 
 It does not stage or commit files, clean the working tree, switch branches, replace unrelated remotes, force-push, merge histories, create GitHub initialization commits, or automatically resolve conflicts. The remote recovery directory is deliberately left for manual comparison and integration; add `GHPUtil-Remote/` to `.gitignore` yourself if appropriate.

@@ -6,13 +6,74 @@ die() {
     return 1
 }
 
+# Select the timestamp palette from the message classification. ANSI colors
+# are applied only to the terminal timestamp, never to the message or log file.
+log_timestamp_style() {
+    local message=$1
+
+    case "$message" in
+        ERROR:*|*" failed."*|*" failed:"*|*" failure:"*)
+            printf '41;30' ;; # Red background, black foreground.
+        WARNING:*|*"warning"*)
+            printf '43;30' ;; # Yellow background, black foreground.
+        *"Continue with the existing repository?"*)
+            printf '43;31' ;; # Yellow background, red foreground.
+        *"Inspecting remote branch history."*|*"Creating incremental remote bundle"*)
+            printf '44;33' ;; # Blue background, yellow foreground.
+        *"Repository published successfully."*|*"Created GitHub repository:"*)
+            printf '42;34' ;; # Green background, blue foreground.
+        *"PUBLICATION SUCCESSFUL"*|*"Publication verified:"*|*"remote bundle is ready"*|*"Verified remote changes extracted"*|*"Temporary remote bundle deleted"*|*"Dry run completed."*|*"Initialization complete."*)
+            printf '42;30' ;; # Green background, black foreground.
+        *"Remote repository already exists."*|*"GitHub repository already exists:"*|*"Publication cancelled"*)
+            printf '43;30' ;; # Yellow background, black foreground.
+        *"Publication unsuccessful."*)
+            printf '41;33' ;; # Red background, yellow foreground.
+        *"Uncommitted changes detected."*)
+            printf '45;30' ;; # Magenta background, black foreground.
+        *"Git push operation failed."*)
+            printf '41;30' ;; # Red background, black foreground.
+        *)
+            printf '46;30' ;; # Cyan background, black foreground (information).
+    esac
+}
+
 log() {
-    local message
-    message="[$(date '+%Y-%m-%d %H:%M:%S %Z')] $*"
-    printf '%s\n' "$message"
+    local timestamp message style rendered_timestamp
+    timestamp="[$(date '+%Y-%m-%d %H:%M:%S %Z')]"
+    message="$*"
+    style="$(log_timestamp_style "$message")"
+
+    if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+        rendered_timestamp="$(printf '\033[%sm%s\033[0m' "$style" "$timestamp")"
+    else
+        rendered_timestamp=$timestamp
+    fi
+    printf '%s %s\n' "$rendered_timestamp" "$message"
+
+    # Keep persistent logs free of terminal escape sequences.
     if [[ -n "${LOG_FILE:-}" ]]; then
-        printf '%s\n' "$message" >> "$LOG_FILE" || {
+        printf '%s %s\n' "$timestamp" "$message" >> "$LOG_FILE" || {
             printf 'WARNING: could not append to log file: %s\n' "$LOG_FILE" >&2
+        }
+    fi
+}
+
+# Print a timestamped interactive prompt. The timestamp uses the question
+# palette; prompt text and captured log content remain plain text.
+log_prompt() {
+    local prompt_text=$1
+    local timestamp style rendered_timestamp
+    timestamp="[$(date '+%Y-%m-%d %H:%M:%S %Z')]"
+    style='43;31'
+    if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+        rendered_timestamp="$(printf '\033[%sm%s\033[0m' "$style" "$timestamp")"
+    else
+        rendered_timestamp=$timestamp
+    fi
+    printf '%s %s' "$rendered_timestamp" "$prompt_text"
+    if [[ -n "${LOG_FILE:-}" ]]; then
+        printf '%s %s\n' "$timestamp" "$prompt_text" >> "$LOG_FILE" || {
+            printf 'WARNING: could not append prompt to log file: %s\n' "$LOG_FILE" >&2
         }
     fi
 }
