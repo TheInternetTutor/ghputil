@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e161e">
+<title>Modular Function Call Matrix — Refined</title>
+<style>
+  :root {
+    /* Theme */
+    --page-background:#0e161e;
+    --panel-background:#17232e;
+    --text-color:#e6edf5;
+    --muted-color:#9eacba;
+    --legend-color:#c0ccd7;
+    --track-color:#223344;
+    --call-color:#8ecbff;
+    --conditional-color:#f2bd78;
+    --cell-border-color:#223344;
+
+    /* Layout presets: compact is the initial default. */
+    --name-column-width:132px;
+    --lane-column-width:36px;
+    --function-row-height:42px;
+    --track-thickness:25px;
+    --call-thickness:2.2px;
+    --conditional-dash-pattern:5 4;
+    --cell-border-width:0px;
+
+    /* Page and typography */
+    --page-padding:22px;
+    --panel-padding:16px;
+    --panel-radius:10px;
+    --base-font-size:13px;
+    --heading-font-size:21px;
+    --name-font-size:12px;
+    --legend-font-size:11px;
+    --content-max-width:1500px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:var(--page-padding);color:var(--text-color);background:var(--page-background);font:var(--base-font-size)/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:var(--content-max-width);margin:0 auto}
+  h1{font-size:var(--heading-font-size);margin:0 0 4px;font-weight:650}
+  .subtitle{margin:0 0 15px;color:var(--muted-color)}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 12px}
+  .toolbar label{color:var(--muted-color);font-size:12px}
+  select{background:#223344;color:var(--text-color);border:1px solid #405568;border-radius:6px;padding:6px 28px 6px 9px;font:inherit}
+  .status{color:var(--muted-color);font-size:11px}
+  .matrix-shell{overflow:auto;max-width:100%;padding:var(--panel-padding);background:var(--panel-background);border-radius:var(--panel-radius);box-shadow:0 4px 18px #0005}
+  .matrix{position:relative;width:max-content;min-width:100%}
+  table{position:absolute;inset:0;border-collapse:collapse;border-spacing:0;table-layout:fixed}
+  col.name{width:var(--name-column-width)}
+  col.event{width:var(--lane-column-width)}
+  td{height:var(--function-row-height);padding:0;border:var(--cell-border-width) solid var(--cell-border-color);vertical-align:middle}
+  td.name{width:var(--name-column-width);padding-right:12px;text-align:right;white-space:nowrap;font:600 var(--name-font-size)/1 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-color);background:var(--panel-background);position:relative;z-index:2}
+  td.event{background:transparent}
+  svg.overlay{position:absolute;inset:0;display:block;overflow:visible;pointer-events:none}
+  .function-track{stroke:var(--track-color);stroke-width:var(--track-thickness);stroke-linecap:round;fill:none}
+  .call-path{stroke:var(--call-color);stroke-width:var(--call-thickness);stroke-linecap:round;fill:none}
+  .conditional-path{stroke:var(--conditional-color);stroke-width:var(--call-thickness);stroke-dasharray:var(--conditional-dash-pattern);stroke-linecap:round;fill:none}
+  .source-dot{fill:var(--call-color)}
+  .conditional-dot{fill:var(--conditional-color)}
+  .event-number{fill:#8193a4;font:9px ui-monospace,monospace;text-anchor:middle}
+  .legend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:14px 2px 0;color:var(--legend-color);font-size:var(--legend-font-size)}
+  .legend-item{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:25px;height:0;border-top:2px solid var(--call-color)}
+  .swatch.dashed{border-top-style:dashed;border-color:var(--conditional-color)}
+  .swatch.track{border-top:var(--track-thickness) solid var(--track-color)}
+  .notes{margin:12px 2px 0;color:var(--muted-color);font-size:11px;max-width:1000px}
+  @media(max-width:700px){body{padding:12px}.matrix-shell{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Modular Function Call Matrix</h1>
+  <p class="subtitle">Refined layout prototype · 20 functions · 30 illustrative call events</p>
+  <div class="toolbar">
+    <label for="layout">Layout density</label>
+    <select id="layout" aria-label="Layout density">
+      <option value="compact" selected>Compact</option>
+      <option value="loose">Loose</option>
+      <option value="wide">Wide</option>
+    </select>
+    <span class="status" id="dimensions" aria-live="polite"></span>
+  </div>
+  <section class="matrix-shell" aria-label="Function call matrix; scroll horizontally when needed">
+    <div class="matrix" id="matrix">
+      <table id="function-table" aria-label="Function rows and call-event columns"><colgroup id="columns"></colgroup><tbody id="rows"></tbody></table>
+      <svg class="overlay" id="overlay" role="img" aria-label="Each vertical connector represents one call event, from caller row to callee row"></svg>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="legend-item"><span class="swatch track"></span> Function track</span>
+      <span class="legend-item"><span class="swatch"></span> Unconditional call</span>
+      <span class="legend-item"><span class="swatch dashed"></span> Conditional call</span>
+      <span class="legend-item">Arrowhead points to callee</span>
+    </div>
+    <p class="notes">Reading the matrix: each horizontal track is a function; each successive vertical column is one statically inferred call event. A connector begins on the caller's track and ends on the callee's track. Separate event columns prevent connectors from crossing. Self-recursion is shown as a small loop within its event column. This is an illustrative stress-test dataset, not a trace of a real program.</p>
+  </section>
+</main>
+<script>
+const functionsList = [
+  "A.main","A.initialize","A.loadConfig","A.run",
+  "B.parseInput","B.validateInput","B.normalizeInput","B.dispatch",
+  "C.readFile","C.decodeData","C.transformData","C.processRecord",
+  "D.writeOutput","D.commitOutput","D.logMessage","D.handleError",
+  "U.trim","U.split","U.join","U.cleanup"
+];
+
+// Each item is one call event, in the illustrative inferred sequence.
+// from/to are function-row indexes; conditional marks a conditional call.
+const calls = [
+  [0,1,0],[0,2,0],[0,14,0],[1,16,0],[1,2,1],
+  [2,4,0],[2,8,0],[4,5,1],[4,17,0],[5,6,0],
+  [6,7,0],[7,10,1],[7,11,0],[8,9,0],[9,10,0],
+  [10,11,0],[11,12,0],[11,15,1],[12,13,0],[13,14,0],
+  [14,16,0],[14,15,1],[15,19,0],[16,17,0],[17,18,0],
+  [18,19,0],[3,7,0],[3,12,1],[6,6,0],[0,19,1]
+].map(([from,to,conditional])=>({from,to,conditional:Boolean(conditional)}));
+
+const presets = {
+  compact:{name:132,lane:36,row:42,track:25},
+  loose:{name:150,lane:52,row:54,track:30},
+  wide:{name:170,lane:68,row:66,track:34}
+};
+const NS="http://www.w3.org/2000/svg";
+const matrix=document.getElementById('matrix');
+const table=document.getElementById('function-table');
+const columns=document.getElementById('columns');
+const rows=document.getElementById('rows');
+const svg=document.getElementById('overlay');
+const dimensions=document.getElementById('dimensions');
+
+function svgEl(tag,attrs,parent=svg){const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);parent.appendChild(el);return el;}
+function render(){
+  const p=presets[document.getElementById('layout').value];
+  const W=p.name+calls.length*p.lane;
+  const H=functionsList.length*p.row;
+  matrix.style.width=W+'px';matrix.style.height=H+'px';
+  table.style.width=W+'px';table.style.height=H+'px';
+  columns.replaceChildren();
+  const nameCol=document.createElement('col');nameCol.className='name';columns.appendChild(nameCol);
+  for(let i=0;i<calls.length;i++){const c=document.createElement('col');c.className='event';columns.appendChild(c);}
+  rows.replaceChildren();
+  functionsList.forEach(name=>{const tr=document.createElement('tr');const label=document.createElement('td');label.className='name';label.textContent=name;tr.appendChild(label);for(let i=0;i<calls.length;i++){const td=document.createElement('td');td.className='event';tr.appendChild(td);}rows.appendChild(tr);});
+  svg.replaceChildren();svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+  const defs=svgEl('defs',{});
+  const marker=svgEl('marker',{id:'arrow',markerWidth:7,markerHeight:7,refX:5.8,refY:3.5,orient:'auto',markerUnits:'userSpaceOnUse'},defs);
+  svgEl('path',{d:'M0 0 L7 3.5 L0 7 Z',fill:'var(--call-color)'},marker);
+  const markerC=svgEl('marker',{id:'arrow-c',markerWidth:7,markerHeight:7,refX:5.8,refY:3.5,orient:'auto',markerUnits:'userSpaceOnUse'},defs);
+  svgEl('path',{d:'M0 0 L7 3.5 L0 7 Z',fill:'var(--conditional-color)'},markerC);
+  const tracks=svgEl('g',{class:'function-track'});
+  functionsList.forEach((_,i)=>{const y=(i+.5)*p.row;svgEl('path',{d:`M${p.name} ${y} H${W}`},tracks);});
+  calls.forEach((call,i)=>{
+    const x=p.name+(i+.5)*p.lane;
+    const y1=(call.from+.5)*p.row;
+    const y2=(call.to+.5)*p.row;
+    const cls=call.conditional?'conditional-path':'call-path';
+    const markerEnd=call.conditional?'url(#arrow-c)':'url(#arrow)';
+    if(call.from===call.to){
+      const r=Math.min(10,p.lane*.28);
+      const d=`M${x-r} ${y1} C${x-r} ${y1-2.8*r},${x+r} ${y1-2.8*r},${x+r} ${y1}`;
+      svgEl('path',{d,class:cls,'marker-end':markerEnd});
+      svgEl('circle',{cx:x-r,cy:y1,r:2.5,class:call.conditional?'conditional-dot':'source-dot'});
+    }else{
+      const top=Math.min(y1,y2),bottom=Math.max(y1,y2);
+      // A dedicated vertical event column is the no-crossing routing rule.
+      svgEl('path',{d:`M${x} ${y1} V${y2}`,class:cls,'marker-end':markerEnd});
+      svgEl('circle',{cx:x,cy:y1,r:2.5,class:call.conditional?'conditional-dot':'source-dot'});
+    }
+  });
+  dimensions.textContent=`${functionsList.length} function rows · ${calls.length} call columns · ${W} × ${H} px`;
+}
+document.getElementById('layout').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
