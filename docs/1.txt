@@ -1,0 +1,71 @@
+{
+  "selectedPreset": "minimal",
+  "current": {
+    "preset": "minimal",
+    "label": "Minimal",
+    "density": 1,
+    "dimensions": {
+      "callColumnWidth": 15,
+      "functionRowHeight": 20,
+      "panelSpacing": 5,
+      "functionTrackThickness": 15
+    }
+  },
+  "presets": {
+    "minimal": {
+      "preset": "minimal",
+      "label": "Minimal",
+      "density": 1,
+      "dimensions": {
+        "callColumnWidth": 24,
+        "functionRowHeight": 30,
+        "panelSpacing": 10,
+        "functionTrackThickness": 16
+      }
+    },
+    "extraCompact": {
+      "preset": "extraCompact",
+      "label": "Extra Compact",
+      "density": 1,
+      "dimensions": {
+        "callColumnWidth": 30,
+        "functionRowHeight": 36,
+        "panelSpacing": 13,
+        "functionTrackThickness": 20
+      }
+    },
+    "compact": {
+      "preset": "compact",
+      "label": "Compact",
+      "density": 1,
+      "dimensions": {
+        "callColumnWidth": 36,
+        "functionRowHeight": 42,
+        "panelSpacing": 16,
+        "functionTrackThickness": 25
+      }
+    },
+    "loose": {
+      "preset": "loose",
+      "label": "Loose",
+      "density": 1,
+      "dimensions": {
+        "callColumnWidth": 52,
+        "functionRowHeight": 54,
+        "panelSpacing": 16,
+        "functionTrackThickness": 30
+      }
+    },
+    "wide": {
+      "preset": "wide",
+      "label": "Wide",
+      "density": 1,
+      "dimensions": {
+        "callColumnWidth": 68,
+        "functionRowHeight": 66,
+        "panelSpacing": 16,
+        "functionTrackThickness": 34
+      }
+    }
+  }
+}

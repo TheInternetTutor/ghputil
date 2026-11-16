@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e161e">
+<title>GHPUtil — Static Module and Function Analysis</title>
+<style>
+  :root {
+    /* Theme */
+    --page-background:#0e161e;
+    --panel-background:#17232e;
+    --text-color:#e6edf5;
+    --muted-color:#9eacba;
+    --legend-color:#c0ccd7;
+    --track-color:#223344;
+    --call-color:#8ecbff;
+    --conditional-color:#f2bd78;
+    --cell-border-color:#223344;
+
+    /* The name column is measured from the active view labels. */
+    --name-column-width:132px;
+    --lane-column-width:32.5px;
+    --function-row-height:22.5px;
+    --track-thickness:17.5px;
+    --call-thickness:2.2px;
+    --conditional-dash-pattern:5 4;
+    --cell-border-width:0px;
+
+    /* Page and typography */
+    --page-padding:22px;
+    --panel-padding:7.5px;
+    --panel-radius:10px;
+    --base-font-size:13px;
+    --heading-font-size:21px;
+    --name-font-size:12px;
+    --legend-font-size:11px;
+    --content-max-width:1500px;
+  }
+/* ============================================================
+   CALIBRATED VISUAL PARAMETERS — DEVELOPER CALIBRATION UTILITY
+   Generated from saved Minimal and Wide endpoint values.
+   Contains all five linearly interpolated presets.
+   Replace the existing calibrated visual-parameters block
+   with this entire section. Do not edit surrounding code.
+   ============================================================ */
+:root {
+  /* Minimal */
+  --preset-minimal-lane:15px;
+  --preset-minimal-row:20px;
+  --preset-minimal-spacing:5px;
+  --preset-minimal-track:15px;
+  --preset-minimal-call:1.5px;
+  --preset-minimal-ring:1.5px;
+  --preset-minimal-ring-radius:5.5px;
+  --preset-minimal-rec-dot:1.5px;
+  --preset-minimal-arrow:5px;
+  --preset-minimal-source-dot:2px;
+  /* Extra Compact */
+  --preset-extraCompact-lane:23.75px;
+  --preset-extraCompact-row:21.25px;
+  --preset-extraCompact-spacing:6.25px;
+  --preset-extraCompact-track:16.25px;
+  --preset-extraCompact-call:1.875px;
+  --preset-extraCompact-ring:1.625px;
+  --preset-extraCompact-ring-radius:6.625px;
+  --preset-extraCompact-rec-dot:2.25px;
+  --preset-extraCompact-arrow:6.25px;
+  --preset-extraCompact-source-dot:3px;
+  /* Compact */
+  --preset-compact-lane:32.5px;
+  --preset-compact-row:22.5px;
+  --preset-compact-spacing:7.5px;
+  --preset-compact-track:17.5px;
+  --preset-compact-call:2.25px;
+  --preset-compact-ring:1.75px;
+  --preset-compact-ring-radius:7.75px;
+  --preset-compact-rec-dot:3px;
+  --preset-compact-arrow:7.5px;
+  --preset-compact-source-dot:4px;
+  /* Loose */
+  --preset-loose-lane:41.25px;
+  --preset-loose-row:23.75px;
+  --preset-loose-spacing:8.75px;
+  --preset-loose-track:18.75px;
+  --preset-loose-call:2.625px;
+  --preset-loose-ring:1.875px;
+  --preset-loose-ring-radius:8.875px;
+  --preset-loose-rec-dot:3.75px;
+  --preset-loose-arrow:8.75px;
+  --preset-loose-source-dot:5px;
+  /* Wide */
+  --preset-wide-lane:50px;
+  --preset-wide-row:25px;
+  --preset-wide-spacing:10px;
+  --preset-wide-track:20px;
+  --preset-wide-call:3px;
+  --preset-wide-ring:2px;
+  --preset-wide-ring-radius:10px;
+  --preset-wide-rec-dot:4.5px;
+  --preset-wide-arrow:10px;
+  --preset-wide-source-dot:6px;
+  /* Current viewer defaults; runtime controls may override these. */
+  --lane-column-width:32.5px;
+  --function-row-height:22.5px;
+  --panel-padding:7.5px;
+  --track-thickness:17.5px;
+  --call-thickness:2.25px;
+  --recursive-ring-thickness:1.75px;
+  --recursive-ring-radius:7.75px;
+  --recursive-dot-radius:3px;
+  --arrowhead-size:7.5px;
+  --source-dot-radius:4px;
+}
+  *{box-sizing:border-box}
+  body{margin:0;padding:var(--page-padding);color:var(--text-color);background:var(--page-background);font:var(--base-font-size)/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:var(--content-max-width);margin:0 auto}
+  h1{font-size:var(--heading-font-size);margin:0 0 4px;font-weight:650}
+  .subtitle{margin:0 0 15px;color:var(--muted-color)}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 12px}
+  .preset-buttons{display:flex;flex-wrap:wrap;gap:7px}
+  button,input{font:inherit}
+  #analysis-file{max-width:min(100%,340px);color:var(--legend-color);font-size:11px}
+  button{color:var(--text-color);background:#223344;border:1px solid #405568;border-radius:6px;padding:7px 11px;cursor:pointer}
+  button:hover{background:#2c4358}
+  button[aria-pressed="true"]{background:#315b80;border-color:#75b7e8;color:#fff;box-shadow:0 0 0 1px #75b7e855}
+  button:focus-visible,input:focus-visible{outline:2px solid #8ecbff;outline-offset:2px}
+  .status{color:var(--muted-color);font-size:11px}
+  .dev-toggle{margin:0 0 12px}
+  .calibration{display:none;margin:0 0 14px;padding:14px;background:#111c26;border:1px solid #34495c;border-radius:9px}
+  .calibration.open{display:block}
+  .calibration h2{font-size:15px;margin:0 0 10px}.calibration h3{font-size:12px;color:var(--legend-color);margin:14px 0 8px}
+  .calibration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+  @media(max-width:520px){.calibration-grid{grid-template-columns:1fr}}
+  .calibration-actions button.saved{background:#285d54;border-color:#4d9d8e;color:#eafff8}
+  .calibration-actions button.saved::before{content:"✓ ";font-weight:700}
+  .control{display:grid;grid-template-columns:1fr 82px;gap:7px 10px;align-items:center}
+  .control label{font-size:12px;color:var(--legend-color)}
+  .control input[type="range"]{grid-column:1/-1;width:100%;accent-color:#8ecbff}
+  .control input[type="number"]{width:82px;background:#0e161e;color:var(--text-color);border:1px solid #405568;border-radius:5px;padding:5px}
+  .scale-control{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #34495c}
+  .calibration-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+  .config-output{width:100%;min-height:125px;margin-top:12px;padding:9px;background:#0b1218;color:#c9d8e6;border:1px solid #34495c;border-radius:6px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}
+  .help{color:var(--muted-color);font-size:11px;margin:8px 0 0}
+  .matrix-shell{overflow:auto;max-width:100%;padding:var(--panel-padding);background:var(--panel-background);border-radius:var(--panel-radius);box-shadow:0 4px 18px #0005}
+  .matrix{position:relative;width:max-content;min-width:100%}
+  table{position:absolute;inset:0;border-collapse:collapse;border-spacing:0;table-layout:fixed}
+  col.name{width:var(--name-column-width)}
+  col.event{width:var(--lane-column-width)}
+  td{height:var(--function-row-height);padding:0;border:var(--cell-border-width) solid var(--cell-border-color);vertical-align:middle}
+  td.name{width:var(--name-column-width);padding:0 8px 0 4px;text-align:right;white-space:nowrap;font:600 var(--name-font-size)/1 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-color);background:var(--panel-background);position:relative;z-index:2}
+  td.event{background:transparent}
+  svg.overlay{position:absolute;inset:0;display:block;overflow:visible;pointer-events:none}
+  .function-track{stroke:var(--track-color);stroke-width:var(--track-thickness);stroke-linecap:round;fill:none}
+  .call-path{stroke:var(--call-color);stroke-width:var(--call-thickness);stroke-linecap:round;fill:none}
+  .conditional-path{stroke:var(--conditional-color);stroke-width:var(--call-thickness);stroke-dasharray:var(--conditional-dash-pattern);stroke-linecap:round;fill:none}
+  .source-dot{fill:var(--call-color)}
+  .conditional-dot{fill:var(--conditional-color)}
+  .recursive-path{stroke:#22c55e;stroke-width:var(--call-thickness);stroke-linecap:round;fill:none}
+  .recursive-conditional-path{stroke:#22c55e;stroke-width:var(--call-thickness);stroke-dasharray:5 4;stroke-linecap:round;fill:none}
+  .recursive-dot{fill:#22c55e}
+  .recursive-ring{fill:none;stroke:#22c55e;stroke-width:var(--recursive-ring-thickness)}
+  .recursive-ring.conditional{stroke-dasharray:4 3}
+  .swatch.recursive{border-color:#22c55e}
+  .swatch.recursive.dashed{border-top-style:dashed}
+  .event-number{fill:#8193a4;font:8px ui-monospace,monospace;text-anchor:middle}
+  .legend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:14px 2px 0;color:var(--legend-color);font-size:var(--legend-font-size)}
+  .legend-item{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:25px;height:0;border-top:2px solid var(--call-color)}
+  .swatch.dashed{border-top-style:dashed;border-color:var(--conditional-color)}
+  .swatch.track{border-top:var(--track-thickness) solid var(--track-color)}
+  .notes{margin:12px 2px 0;color:var(--muted-color);font-size:11px;max-width:1000px}
+  .ai-disclaimer{color:#dce8f4;font-style:italic;font-weight:600;white-space:normal}
+  @media(max-width:700px){body{padding:12px}.matrix-shell{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Modular Function Call Matrix</h1>
+  <p class="subtitle" id="subtitle">Loading project analysis…</p>
+  <div class="toolbar" aria-label="Analysis data source">
+    <label class="status" for="analysis-file">Load analysis JSON:</label>
+    <input id="analysis-file" type="file" accept=".json,application/json">
+    <span class="status" id="load-status" role="status" aria-live="polite">The viewer loads sama.js automatically. Choose a JSON file only to replace the current analysis manually.</span>
+  </div>
+  <div class="toolbar" aria-label="Analysis view">
+    <div class="preset-buttons">
+      <button type="button" id="module-view" aria-pressed="true">Module sourcing</button>
+      <button type="button" id="function-view" aria-pressed="false">Function calls</button>
+    </div>
+    <span class="status" id="view-description"></span>
+  </div>
+  <div class="toolbar" aria-label="Diagram layout presets">
+    <div class="preset-buttons" id="preset-buttons">
+      <button type="button" data-preset="minimal" aria-pressed="false">Minimal</button>
+      <button type="button" data-preset="extraCompact" aria-pressed="false">Extra Compact</button>
+      <button type="button" data-preset="compact" aria-pressed="false">Compact</button>
+      <button type="button" data-preset="loose" aria-pressed="true">Loose</button>
+      <button type="button" data-preset="wide" aria-pressed="false">Wide</button>
+    </div>
+    <span class="status" id="dimensions" aria-live="polite"></span>
+  </div>
+  <section class="matrix-shell" aria-label="Function call matrix; scroll horizontally when needed">
+    <div class="matrix" id="matrix">
+      <table id="function-table" aria-label="Function rows and call-event columns"><colgroup id="columns"></colgroup><tbody id="rows"></tbody></table>
+      <svg class="overlay" id="overlay" role="img" aria-label="Each vertical connector represents one call event, from caller row to callee row"></svg>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="legend-item"><span class="swatch track"></span> Function track</span>
+      <span class="legend-item"><span class="swatch"></span><span id="solid-legend">Direct function call</span></span>
+      <span class="legend-item"><span class="swatch dashed"></span><span id="dashed-legend">Conditional relationship</span></span>
+      <span class="legend-item"><span class="swatch recursive"></span>Recursive relationship (ring)</span>
+      <span class="legend-item"><span class="swatch recursive dashed"></span>Conditional recursion</span>
+      <span class="legend-item">Arrowhead points to callee</span>
+    </div>
+    <p class="notes" id="diagram-notes"></p>
+  </section>
+  <button class="dev-toggle" id="dev-toggle" type="button" aria-expanded="false" aria-controls="calibration">⚙ Open Developer / Calibration Window</button>
+  <section class="calibration" id="calibration" aria-label="Developer calibration controls">
+    <h2>Layout and visual calibration</h2>
+    <div class="control scale-control">
+      <label for="density-range">Combined density multiplier</label>
+      <input id="density-number" type="number" min="0.35" max="2.5" step="0.01" value="1">
+      <input id="density-range" type="range" min="0.35" max="2.5" step="0.01" value="1">
+    </div>
+    <h3>Layout dimensions</h3>
+    <div class="calibration-grid">
+      <div class="control"><label for="lane-number">Call column width (px)</label><input id="lane-number" type="number" min="8" max="180" step="0.5"><input id="lane-range" type="range" min="8" max="180" step="0.5"></div>
+      <div class="control"><label for="row-number">Function row height (px)</label><input id="row-number" type="number" min="12" max="180" step="0.5"><input id="row-range" type="range" min="12" max="180" step="0.5"></div>
+      <div class="control"><label for="spacing-number">Panel spacing / padding (px)</label><input id="spacing-number" type="number" min="0" max="80" step="0.5"><input id="spacing-range" type="range" min="0" max="80" step="0.5"></div>
+      <div class="control"><label for="track-number">Function track thickness (px)</label><input id="track-number" type="number" min="1" max="80" step="0.5"><input id="track-range" type="range" min="1" max="80" step="0.5"></div>
+    </div>
+    <h3>Visual elements</h3>
+    <div class="calibration-grid" id="visual-controls">
+      <div class="control"><label for="call-number">Connector thickness (px)</label><input id="call-number" type="number" min="0.5" max="12" step="0.1"><input id="call-range" type="range" min="0.5" max="12" step="0.1"></div>
+      <div class="control"><label for="ring-number">Recursive ring thickness (px)</label><input id="ring-number" type="number" min="0.25" max="6" step="0.05"><input id="ring-range" type="range" min="0.25" max="6" step="0.05"></div>
+      <div class="control"><label for="ringRadius-number">Recursive ring radius (px)</label><input id="ringRadius-number" type="number" min="1.45" max="24" step="0.1"><input id="ringRadius-range" type="range" min="1.45" max="24" step="0.1"></div>
+      <div class="control"><label for="recDot-number">Recursive center-dot radius (px)</label><input id="recDot-number" type="number" min="0.5" max="8" step="0.05"><input id="recDot-range" type="range" min="0.5" max="8" step="0.05"></div>
+      <div class="control"><label for="arrow-number">Arrowhead size (px)</label><input id="arrow-number" type="number" min="3" max="20" step="0.5"><input id="arrow-range" type="range" min="3" max="20" step="0.5"></div>
+      <div class="control"><label for="sourceDot-number">Ordinary call-origin dot radius (px)</label><input id="sourceDot-number" type="number" min="0.5" max="8" step="0.1"><input id="sourceDot-range" type="range" min="0.5" max="8" step="0.1"></div>
+    </div>
+    <div class="calibration-actions">
+      <button type="button" id="save-minimal">Save Minimal endpoint</button>
+      <button type="button" id="save-wide">Save Wide endpoint</button>
+      <button type="button" id="generate-css">Generate interpolated CSS</button>
+      <button type="button" id="copy-css">Copy CSS block</button>
+      <button type="button" id="reset-calibration">Reset to this view's default</button>
+    </div>
+    <p class="status" id="endpoint-status" aria-live="polite">Minimal and Wide endpoints have not yet been customized.</p>
+    <textarea class="config-output" id="config-output" readonly aria-label="Generated replaceable CSS block" spellcheck="false"></textarea>
+    <p class="help">Tune the controls, save the Minimal and Wide endpoint values, then generate the five linearly interpolated presets. Copy the complete commented CSS block and replace the existing calibrated visual-parameters block. Density scales all layout and visual parameters proportionally. The recursive ring radius cannot be smaller than the recursive center-dot radius.</p>
+  </section>
+</main>
+<script>/* Embedded fallback; companion .js file may replace this value. */ window.MFCM_DATA = {"project":"GHPUtil","archive":"github_publish(16).zip","analysis_method":"Static source inspection of the extracted Bash scripts. No scripts were executed. The function view is augmented with fictitious helper functions and recursive relationships distributed throughout the rows to stress-test visualization; these additions are not source-derived GHPUtil facts.","module":{"rows":["github_publish.sh","config.sh","validation.sh","git_inspection.sh","github_api.sh","git_publish.sh","install.sh","github-publish.conf.example",".github-publish.conf"],"calls":[{"from":0,"to":1,"line_type":"solid"},{"from":0,"to":2,"line_type":"solid"},{"from":0,"to":3,"line_type":"solid"},{"from":0,"to":4,"line_type":"solid"},{"from":0,"to":5,"line_type":"solid"},{"from":1,"to":7,"line_type":"dashed"},{"from":1,"to":8,"line_type":"dashed"},{"from":6,"to":0,"line_type":"dashed"},{"from":6,"to":1,"line_type":"dashed"},{"from":6,"to":2,"line_type":"dashed"},{"from":6,"to":3,"line_type":"dashed"},{"from":6,"to":4,"line_type":"dashed"},{"from":6,"to":5,"line_type":"dashed"},{"from":6,"to":7,"line_type":"dashed"}]},"function":{"rows":[{"name":"bootstrap()","module":"github_publish.sh"},{"name":"scan_dependency_tree()","module":"demo_graph_walk.sh"},{"name":"main()","module":"github_publish.sh"},{"name":"usage()","module":"config.sh"},{"name":"normalize_call_target()","module":"demo_normalize.sh"},{"name":"parse_arguments()","module":"config.sh"},{"name":"prepare_project_config()","module":"config.sh"},{"name":"resolve_retry_policy()","module":"demo_retry.sh"},{"name":"load_project_config()","module":"config.sh"},{"name":"resolve_effective_config()","module":"config.sh"},{"name":"walk_expression_nodes()","module":"demo_expression.sh"},{"name":"resolve_visibility()","module":"config.sh"},{"name":"confirm_repository_creation()","module":"config.sh"},{"name":"visit_expression_node()","module":"demo_expression.sh"},{"name":"die()","module":"validation.sh"},{"name":"log_timestamp_style()","module":"validation.sh"},{"name":"evaluate_guard_clause()","module":"demo_expression.sh"},{"name":"log()","module":"validation.sh"},{"name":"log_prompt()","module":"validation.sh"},{"name":"reconcile_state()","module":"demo_state.sh"},{"name":"run_step()","module":"validation.sh"},{"name":"validate_enum()","module":"validation.sh"},{"name":"refresh_dependency_cache()","module":"demo_cache.sh"},{"name":"resolve_project_root()","module":"validation.sh"},{"name":"initialize_logging()","module":"validation.sh"},{"name":"dispatch_fallback()","module":"demo_dispatch.sh"},{"name":"validate_dependencies()","module":"validation.sh"},{"name":"inspect_local_repository()","module":"git_inspection.sh"},{"name":"validate_nested_options()","module":"demo_validation.sh"},{"name":"inspect_origin_remote()","module":"git_inspection.sh"},{"name":"remote_matches_intended_repository()","module":"git_inspection.sh"},{"name":"expand_reference_chain()","module":"demo_reference.sh"},{"name":"load_github_token()","module":"github_api.sh"},{"name":"cleanup_api_temp()","module":"github_api.sh"},{"name":"resolve_alias_target()","module":"demo_reference.sh"},{"name":"api_request()","module":"github_api.sh"},{"name":"github_authenticate()","module":"github_api.sh"},{"name":"finalize_operation()","module":"demo_finalize.sh"},{"name":"check_github_repository()","module":"github_api.sh"},{"name":"github_create_repository()","module":"github_api.sh"},{"name":"recover_partial_state()","module":"demo_recovery.sh"},{"name":"api_error_message()","module":"github_api.sh"},{"name":"configure_origin_remote()","module":"git_publish.sh"},{"name":"release_pending_resources()","module":"demo_cleanup.sh"},{"name":"verify_ssh_authentication()","module":"git_publish.sh"},{"name":"publish_branch()","module":"git_publish.sh"},{"name":"summarize_execution()","module":"demo_reporting.sh"},{"name":"verify_publication()","module":"git_publish.sh"},{"name":"report_dry_run()","module":"git_publish.sh"},{"name":"emit_completion_event()","module":"demo_reporting.sh"},{"name":"report_success()","module":"git_publish.sh"},{"name":"install_main()","module":"install.sh"},{"name":"cleanup_deferred_items()","module":"demo_cleanup.sh"}],"calls":[{"from":0,"to":2,"line_type":"solid"},{"from":1,"to":1,"line_type":"recursive"},{"from":2,"to":20,"line_type":"solid"},{"from":2,"to":5,"line_type":"dashed"},{"from":2,"to":23,"line_type":"dashed"},{"from":4,"to":13,"line_type":"recursive"},{"from":2,"to":24,"line_type":"dashed"},{"from":2,"to":6,"line_type":"dashed"},{"from":2,"to":8,"line_type":"dashed"},{"from":2,"to":9,"line_type":"dashed"},{"from":2,"to":26,"line_type":"dashed"},{"from":2,"to":27,"line_type":"dashed"},{"from":13,"to":4,"line_type":"recursive"},{"from":2,"to":32,"line_type":"dashed"},{"from":2,"to":36,"line_type":"dashed"},{"from":2,"to":29,"line_type":"dashed"},{"from":2,"to":38,"line_type":"dashed"},{"from":2,"to":11,"line_type":"dashed"},{"from":2,"to":12,"line_type":"dashed"},{"from":2,"to":39,"line_type":"dashed"},{"from":19,"to":19,"line_type":"conditional_recursive"},{"from":2,"to":42,"line_type":"dashed"},{"from":2,"to":44,"line_type":"dashed"},{"from":2,"to":45,"line_type":"dashed"},{"from":2,"to":47,"line_type":"dashed"},{"from":2,"to":3,"line_type":"solid"},{"from":2,"to":17,"line_type":"solid"},{"from":2,"to":48,"line_type":"solid"},{"from":2,"to":50,"line_type":"solid"},{"from":22,"to":40,"line_type":"conditional_recursive"},{"from":2,"to":33,"line_type":"solid"},{"from":2,"to":14,"line_type":"solid"},{"from":20,"to":33,"line_type":"dashed"},{"from":6,"to":14,"line_type":"solid"},{"from":6,"to":17,"line_type":"solid"},{"from":6,"to":18,"line_type":"solid"},{"from":8,"to":14,"line_type":"solid"},{"from":8,"to":17,"line_type":"solid"},{"from":40,"to":22,"line_type":"conditional_recursive"},{"from":9,"to":21,"line_type":"solid"},{"from":9,"to":14,"line_type":"solid"},{"from":9,"to":17,"line_type":"solid"},{"from":11,"to":21,"line_type":"solid"},{"from":11,"to":18,"line_type":"solid"},{"from":12,"to":14,"line_type":"solid"},{"from":12,"to":18,"line_type":"solid"},{"from":14,"to":17,"line_type":"solid"},{"from":28,"to":49,"line_type":"recursive"},{"from":17,"to":15,"line_type":"solid"},{"from":5,"to":14,"line_type":"solid"},{"from":21,"to":14,"line_type":"solid"},{"from":23,"to":14,"line_type":"solid"},{"from":24,"to":14,"line_type":"solid"},{"from":26,"to":14,"line_type":"solid"},{"from":27,"to":14,"line_type":"solid"},{"from":27,"to":17,"line_type":"solid"},{"from":49,"to":28,"line_type":"recursive"},{"from":29,"to":30,"line_type":"solid"},{"from":29,"to":14,"line_type":"solid"},{"from":29,"to":17,"line_type":"solid"},{"from":32,"to":14,"line_type":"solid"},{"from":35,"to":14,"line_type":"solid"},{"from":36,"to":35,"line_type":"solid"},{"from":36,"to":14,"line_type":"solid"},{"from":38,"to":35,"line_type":"solid"},{"from":38,"to":41,"line_type":"solid"},{"from":37,"to":37,"line_type":"recursive"},{"from":38,"to":14,"line_type":"solid"},{"from":39,"to":35,"line_type":"solid"},{"from":39,"to":41,"line_type":"solid"},{"from":39,"to":14,"line_type":"solid"},{"from":39,"to":17,"line_type":"solid"},{"from":42,"to":14,"line_type":"solid"},{"from":42,"to":17,"line_type":"solid"},{"from":44,"to":14,"line_type":"solid"},{"from":44,"to":17,"line_type":"solid"},{"from":52,"to":52,"line_type":"conditional_recursive"},{"from":45,"to":14,"line_type":"solid"},{"from":45,"to":17,"line_type":"solid"},{"from":47,"to":14,"line_type":"solid"},{"from":47,"to":17,"line_type":"solid"},{"from":48,"to":17,"line_type":"solid"},{"from":50,"to":17,"line_type":"solid"}]},"notes":["github_publish.sh is the normal runtime entry point and sources five implementation modules.","install.sh is a separate installer entry point; it copies six shell scripts and the configuration template.","config.sh reads github-publish.conf.example when initializing a project and reads the project .github-publish.conf at runtime.","The project configuration is data, not a sourced Bash module.","run_step invokes function names passed to it by main; the targets are represented as dashed dispatch edges.","Functions with no identified user-defined caller remain in the diagram; this does not prove they are unused.","Calls into Bash builtins, external commands, and operating-system utilities are excluded from the function-to-function graph.","The function diagram includes 10 synthetic recursion relationships, interleaved among ordinary calls and distributed from near the beginning to near the end, solely to demonstrate visualization behavior; these are not source-derived GHPUtil facts."]};</script>
+<script src="./sama.js" onerror="console.warn('Companion data JS unavailable; using embedded analysis.')"></script>
+<script>
+let analysisData = null;
+let activeView = 'module';
+let functionsList = [];
+let calls = [];
+function readPresetCss(){
+  const css=getComputedStyle(document.documentElement);
+  const read=(name)=>parseFloat(css.getPropertyValue(name));
+  const keys=['minimal','extraCompact','compact','loose','wide'];
+  const values={};
+  for(const key of keys){
+    const p={lane:read(`--preset-${key}-lane`),row:read(`--preset-${key}-row`),spacing:read(`--preset-${key}-spacing`),track:read(`--preset-${key}-track`),call:read(`--preset-${key}-call`),ring:read(`--preset-${key}-ring`),ringRadius:read(`--preset-${key}-ring-radius`),recDot:read(`--preset-${key}-rec-dot`),arrow:read(`--preset-${key}-arrow`),sourceDot:read(`--preset-${key}-source-dot`)};
+    values[key]=p;
+  }
+  return values;
+}
+const presets=readPresetCss();
+const presetLabels={minimal:'Minimal',extraCompact:'Extra Compact',compact:'Compact',loose:'Loose',wide:'Wide'};
+const viewDefaults={module:'loose',function:'minimal'};
+const visualKeys=['call','ring','ringRadius','recDot','arrow','sourceDot'];
+const state={preset:'loose',density:1,base:{lane:41.25,row:23.75,spacing:8.75,track:18.75,call:2.5,ring:1.1,ringRadius:5.5,recDot:1.6,arrow:8,sourceDot:2.75}};
+let endpoints={minimal:null,wide:null};
+const NS="http://www.w3.org/2000/svg";
+const matrix=document.getElementById('matrix');
+const table=document.getElementById('function-table');
+const columns=document.getElementById('columns');
+const rows=document.getElementById('rows');
+const svg=document.getElementById('overlay');
+const dimensions=document.getElementById('dimensions');
+const loadStatus=document.getElementById('load-status');
+const allowedLineTypes=new Set(['solid','dashed','recursive','conditional_recursive']);
+
+function svgEl(tag,attrs,parent=svg){const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);parent.appendChild(el);return el;}
+function validateData(data){
+  if(!data||typeof data!=='object'||!data.module||!data.function||!Array.isArray(data.module.rows)||!Array.isArray(data.module.calls)||!Array.isArray(data.function.rows)||!Array.isArray(data.function.calls)||!Array.isArray(data.notes))throw new Error('Missing required project, module, function, or notes structures.');
+  for(const [view,section] of [['module',data.module],['function',data.function]]){
+    section.calls.forEach((edge,i)=>{
+      if(!Number.isInteger(edge.from)||!Number.isInteger(edge.to)||edge.from<0||edge.to<0||edge.from>=section.rows.length||edge.to>=section.rows.length)throw new Error(`${view}.calls[${i}] has an invalid row index.`);
+      if(!allowedLineTypes.has(edge.line_type))throw new Error(`${view}.calls[${i}] has an unsupported line_type.`);
+    });
+  }
+  if(data.function.rows.some(row=>!row||typeof row.name!=='string'||typeof row.module!=='string'))throw new Error('Each function row must contain string properties name and module.');
+  if(data.module.rows.some(row=>typeof row!=='string'))throw new Error('Each module row must be a string.');
+}
+function setLoadStatus(message,isError=false){loadStatus.textContent=message;loadStatus.style.color=isError?'#ff9b9b':'var(--muted-color)';}
+function effective(){const out={};for(const [k,v] of Object.entries(state.base))out[k]=v*state.density;return out;}
+function syncControls(){
+  const e=effective();
+  document.getElementById('density-range').value=state.density;
+  document.getElementById('density-number').value=state.density.toFixed(2);
+  const keys=['lane','row','spacing','track','call','ring','ringRadius','recDot','arrow','sourceDot'];
+  for(const k of keys){
+    document.getElementById(k+'-range').value=e[k];
+    document.getElementById(k+'-number').value=Number(e[k].toFixed(2));
+  }
+  const ringMin=e.recDot;
+  for(const suffix of ['range','number']){const el=document.getElementById('ringRadius-'+suffix);el.min=ringMin;if(Number(el.value)<ringMin)el.value=ringMin;}
+  document.getElementById('save-minimal').classList.toggle('saved',Boolean(endpoints.minimal));
+  document.getElementById('save-wide').classList.toggle('saved',Boolean(endpoints.wide));
+  document.getElementById('save-minimal').textContent=endpoints.minimal?'Minimal endpoint saved':'Save Minimal endpoint';
+  document.getElementById('save-wide').textContent=endpoints.wide?'Wide endpoint saved':'Save Wide endpoint';
+  broadcastCalibrationState();
+  document.querySelectorAll('[data-preset]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.preset===state.preset)));
+}
+function nearestPreset(){
+  const e=effective();let best='compact',bestScore=Infinity;
+  for(const [name,p] of Object.entries(presets)){
+    const score=['lane','row','spacing','track','call','ring','ringRadius','recDot','arrow','sourceDot'].reduce((sum,k)=>sum+Math.pow((e[k]-p[k])/Math.max(p[k],0.5),2),0);
+    if(score<bestScore){best=name;bestScore=score;}
+  }
+  state.preset=best;
+}
+function snapshotEndpoint(){
+  return effective();
+}
+function saveEndpoint(which){endpoints[which]=snapshotEndpoint();document.getElementById('endpoint-status').textContent=`${presetLabels[which]} endpoint saved from current calibration values.`;broadcastCalibrationState();}
+function interpolate(a,b,t){const out={};for(const k of Object.keys(a))out[k]=Number((a[k]+(b[k]-a[k])*t).toFixed(3));return out;}
+function cssBlock(){
+  if(!endpoints.minimal||!endpoints.wide)throw new Error('Save both Minimal and Wide endpoints before generating CSS.');
+  const names=['minimal','extraCompact','compact','loose','wide'];
+  const lines=['/* ============================================================','   CALIBRATED VISUAL PARAMETERS — DEVELOPER CALIBRATION UTILITY','   Generated from saved Minimal and Wide endpoint values.','   Contains all five linearly interpolated presets.','   Replace the existing calibrated visual-parameters block','   with this entire section. Do not edit surrounding code.','   ============================================================ */',':root {'];
+  const props={lane:'lane',row:'row',spacing:'spacing',track:'track',call:'call',ring:'ring',ringRadius:'ring-radius',recDot:'rec-dot',arrow:'arrow',sourceDot:'source-dot'};
+  names.forEach((name,i)=>{const v=interpolate(endpoints.minimal,endpoints.wide,i/4);lines.push(`  /* ${presetLabels[name]} */`);for(const [key,css] of Object.entries(props))lines.push(`  --preset-${name}-${css}:${v[key]}px;`);});
+  const compact=interpolate(endpoints.minimal,endpoints.wide,2/4);
+  lines.push('  /* Current viewer defaults; runtime controls may override these. */');
+  for(const [key,css] of Object.entries(props))lines.push(`  --${key==='lane'?'lane-column-width':key==='row'?'function-row-height':key==='spacing'?'panel-padding':key==='track'?'track-thickness':key==='call'?'call-thickness':key==='ring'?'recursive-ring-thickness':key==='ringRadius'?'recursive-ring-radius':key==='recDot'?'recursive-dot-radius':key==='arrow'?'arrowhead-size':'source-dot-radius'}:${compact[key]}px;`);
+  lines.push('}');return lines.join('\n');
+}
+function rowLabel(row){return activeView==='function'?row.name.replace(/\(\)$/,''):row;}
+function render(){
+  if(!analysisData)return;
+  const e=effective();
+  const displayNames=functionsList.map(rowLabel);
+  const measureCanvas=document.createElement('canvas');
+  const measureContext=measureCanvas.getContext('2d');
+  const labelFont=getComputedStyle(document.documentElement).getPropertyValue('--name-font-size').trim()||'12px';
+  measureContext.font=`600 ${labelFont} ui-monospace, SFMono-Regular, Consolas, monospace`;
+  const longestLabelWidth=displayNames.reduce((max,name)=>Math.max(max,measureContext.measureText(name).width),0);
+  const nameColumnWidth=Math.ceil(longestLabelWidth+12);
+  const p={name:nameColumnWidth,lane:e.lane,row:e.row,spacing:e.spacing,track:e.track};
+  document.documentElement.style.setProperty('--name-column-width',p.name+'px');
+  document.documentElement.style.setProperty('--panel-padding',p.spacing+'px');
+  document.documentElement.style.setProperty('--track-thickness',p.track+'px');
+  document.documentElement.style.setProperty('--call-thickness',e.call+'px');
+  document.documentElement.style.setProperty('--recursive-ring-thickness',e.ring+'px');
+  document.documentElement.style.setProperty('--recursive-ring-radius',Math.max(e.ringRadius,e.recDot)+'px');
+  document.documentElement.style.setProperty('--recursive-dot-radius',e.recDot+'px');
+  document.documentElement.style.setProperty('--source-dot-radius',e.sourceDot+'px');
+  const W=p.name+calls.length*p.lane;
+  const H=functionsList.length*p.row;
+  matrix.style.width=W+'px';matrix.style.height=H+'px';
+  table.style.width=W+'px';table.style.height=H+'px';
+  document.documentElement.style.setProperty('--lane-column-width',p.lane+'px');
+  document.documentElement.style.setProperty('--function-row-height',p.row+'px');
+  columns.replaceChildren();
+  const nameCol=document.createElement('col');nameCol.className='name';nameCol.style.width=p.name+'px';columns.appendChild(nameCol);
+  for(let i=0;i<calls.length;i++){const c=document.createElement('col');c.className='event';columns.appendChild(c);}
+  rows.replaceChildren();
+  displayNames.forEach(name=>{const tr=document.createElement('tr');const label=document.createElement('td');label.className='name';label.textContent=name;label.style.width=p.name+'px';tr.appendChild(label);for(let i=0;i<calls.length;i++){const td=document.createElement('td');td.className='event';tr.appendChild(td);}rows.appendChild(tr);});
+  svg.replaceChildren();svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+  const defs=svgEl('defs',{});
+  const markerSpecs=[
+    ['arrow','var(--call-color)'],['arrow-c','var(--conditional-color)'],
+    ['arrow-r','#22c55e'],['arrow-rc','#22c55e']
+  ];
+  for(const [id,color] of markerSpecs){const size=e.arrow;const marker=svgEl('marker',{id,markerWidth:size,markerHeight:size,refX:size*.83,refY:size/2,orient:'auto',markerUnits:'userSpaceOnUse'},defs);svgEl('path',{d:`M0 0 L${size} ${size/2} L0 ${size} Z`,fill:color},marker);}
+  const tracks=svgEl('g',{class:'function-track'});
+  functionsList.forEach((_,i)=>{const y=(i+.5)*p.row;svgEl('path',{d:`M${p.name} ${y} H${W}`},tracks);});
+  calls.forEach((call,i)=>{
+    const x=p.name+(i+.5)*p.lane;
+    const y1=(call.from+.5)*p.row;
+    const y2=(call.to+.5)*p.row;
+    const recursive=call.line_type==='recursive'||call.line_type==='conditional_recursive';
+    const conditional=call.line_type==='dashed'||call.line_type==='conditional_recursive';
+    if(recursive){
+      const ringRadius=Math.max(e.ringRadius,e.recDot);
+      if(call.from!==call.to){
+        const cls=conditional?'recursive-conditional-path':'recursive-path';
+        const markerEnd=conditional?'url(#arrow-rc)':'url(#arrow-r)';
+        svgEl('path',{d:`M${x} ${y1} V${y2}`,class:cls,'marker-end':markerEnd});
+      }
+      svgEl('circle',{cx:x,cy:y1,r:ringRadius,class:conditional?'recursive-ring conditional':'recursive-ring'});
+      svgEl('circle',{cx:x,cy:y1,r:e.recDot,class:'recursive-dot'});
+    }else{
+      const cls=conditional?'conditional-path':'call-path';
+      const markerEnd=conditional?'url(#arrow-c)':'url(#arrow)';
+      if(call.from===call.to){
+        const r=Math.min(10,p.lane*.28);
+        const d=`M${x-r} ${y1} C${x-r} ${y1-2.8*r},${x+r} ${y1-2.8*r},${x+r} ${y1}`;
+        svgEl('path',{d,class:cls,'marker-end':markerEnd});
+      }else{
+        svgEl('path',{d:`M${x} ${y1} V${y2}`,class:cls,'marker-end':markerEnd});
+      }
+      svgEl('circle',{cx:x,cy:y1,r:e.sourceDot,class:conditional?'conditional-dot':'source-dot'});
+    }
+  });
+  dimensions.textContent=`${presetLabels[state.preset]} · ${functionsList.length} ${activeView==='module'?'files':'functions'} · ${calls.length} relationships · ${W} × ${H} px`;
+  syncControls();
+}
+function selectView(name){
+  activeView=name;
+  const d=analysisData[name];
+  functionsList=d.rows;
+  calls=d.calls;
+  document.getElementById('module-view').setAttribute('aria-pressed',String(name==='module'));
+  document.getElementById('function-view').setAttribute('aria-pressed',String(name==='function'));
+  document.getElementById('subtitle').textContent=`${analysisData.project} · ${name==='module'?'module dependency':'function call'} static analysis · ${functionsList.length} ${name==='module'?'files':'functions'}`;
+  document.getElementById('view-description').textContent=name==='module'?'Package file relationships':'Static function call relationships';
+  document.getElementById('solid-legend').textContent=name==='module'?'Bash source':'Unconditional call';
+  document.getElementById('dashed-legend').textContent='Conditional relationship';
+  const baseNote=name==='module'
+    ? 'Module view: horizontal tracks are package files. Solid connectors represent source dependencies; dashed connectors represent file reads or installer copies.'
+    : 'Function view: horizontal tracks are declared functions. Each vertical event column represents one statically inferred caller-to-callee relationship. Column order is an inferred presentation, not execution timing or a runtime trace.';
+  document.getElementById('diagram-notes').textContent=baseNote+' '+analysisData.notes.join(' ')+' ';
+  const disclaimer=document.createElement('span');
+  disclaimer.className='ai-disclaimer';
+  disclaimer.textContent='AI-generated chart; it may contain mistakes.';
+  document.getElementById('diagram-notes').appendChild(disclaimer);
+  selectPreset(viewDefaults[name]);
+}
+function selectPreset(name){state.preset=name;state.density=1;const p=presets[name];state.base={...p};render();}
+function loadAnalysis(data,sourceName){
+  validateData(data);
+  analysisData=data;
+  document.getElementById('module-view').disabled=false;
+  document.getElementById('function-view').disabled=false;
+  setLoadStatus(`Loaded ${sourceName}: ${data.module.rows.length} modules/files, ${data.function.rows.length} functions, ${data.function.calls.length} function relationships.`);
+  selectView('module');
+}
+document.getElementById('analysis-file').addEventListener('change',async event=>{
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  try{loadAnalysis(JSON.parse(await file.text()),file.name);}
+  catch(error){setLoadStatus(`Could not load JSON: ${error.message}`,true);}
+});
+document.getElementById('module-view').addEventListener('click',()=>selectView('module'));
+document.getElementById('function-view').addEventListener('click',()=>selectView('function'));
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>selectPreset(b.dataset.preset)));
+let calibrationWindow=null;
+function broadcastCalibrationState(){
+  if(!calibrationWindow||calibrationWindow.closed)return;
+  const payload={type:'calibration-state',values:{...effective()},density:state.density,status:document.getElementById('endpoint-status').textContent,css:document.getElementById('config-output').value,minSaved:Boolean(endpoints.minimal),wideSaved:Boolean(endpoints.wide)};
+  if(typeof calibrationWindow.__receiveCalibrationState==='function')calibrationWindow.__receiveCalibrationState(payload);
+  else calibrationWindow.postMessage(payload,'*');
+}
+function openCalibrationWindow(){
+  if(calibrationWindow&&!calibrationWindow.closed){calibrationWindow.focus();return;}
+  calibrationWindow=window.open('','ghputilCalibration','popup=yes,width=920,height=900,resizable=yes,scrollbars=yes');
+  if(!calibrationWindow){setLoadStatus('The calibration window was blocked. Allow pop-ups for this page, then try again.',true);return;}
+  const css=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n');
+  const panel=document.getElementById('calibration').cloneNode(true);
+  panel.classList.add('open');panel.style.display='block';panel.style.margin='0';
+  calibrationWindow.document.open();
+  calibrationWindow.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Developer Calibration — GHPUtil</title><style>${css}body{padding:16px}main{max-width:none}.calibration{display:block!important}.calibration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:600px){.calibration-grid{grid-template-columns:1fr}}h1{margin:0 0 12px}</style></head><body><main><h1>Developer / Calibration</h1><p class="status" id="calibration-connection">Connecting to parent diagram…</p>${panel.outerHTML}</main></body></html>`);
+  calibrationWindow.document.close();
+  calibrationWindow.__receiveCalibrationState=function(d){
+    for(const [k,v] of Object.entries(d.values||{})){
+      const prefix=k+'-';
+      for(const suffix of ['range','number']){
+        const el=calibrationWindow.document.getElementById(prefix+suffix);
+        if(el){if(k==='ringRadius')el.min=d.values.recDot;el.value=v;}
+      }
+    }
+    const densityRange=calibrationWindow.document.getElementById('density-range');
+    const densityNumber=calibrationWindow.document.getElementById('density-number');
+    if(densityRange)densityRange.value=d.density;
+    if(densityNumber)densityNumber.value=Number(d.density).toFixed(2);
+    const connection=calibrationWindow.document.getElementById('calibration-connection');
+    if(connection)connection.textContent='Connected to parent diagram · live updates enabled';
+    const status=calibrationWindow.document.getElementById('endpoint-status');
+    if(status)status.textContent=d.status;
+    const output=calibrationWindow.document.getElementById('config-output');
+    if(output)output.value=d.css;
+    for(const [id,saved] of [['save-minimal',d.minSaved],['save-wide',d.wideSaved]]){
+      const b=calibrationWindow.document.getElementById(id);
+      if(b){b.classList.toggle('saved',saved);b.textContent=saved?(id==='save-minimal'?'Minimal endpoint saved':'Wide endpoint saved'):(id==='save-minimal'?'Save Minimal endpoint':'Save Wide endpoint');}
+    }
+  };
+  calibrationWindow.document.querySelectorAll('#calibration input').forEach(el=>{
+    const eventName=el.type==='range'?'input':'change';
+    el.addEventListener(eventName,()=>{
+      const message={type:'calibration-control',id:el.id,value:el.value,eventName};
+      window.__handleCalibrationMessage(message);
+    });
+  });
+  calibrationWindow.document.querySelectorAll('#calibration button').forEach(el=>el.addEventListener('click',async()=>{
+    if(el.id==='copy-css'){
+      const output=calibrationWindow.document.getElementById('config-output');
+      const status=calibrationWindow.document.getElementById('endpoint-status');
+      if(!output.value){status.textContent='Generate the CSS block before copying.';return;}
+      try{await calibrationWindow.navigator.clipboard.writeText(output.value);status.textContent='Complete CSS block copied to clipboard.';}
+      catch{output.focus();output.select();status.textContent='Clipboard unavailable; CSS block selected. Press Ctrl+C to copy.';}
+      return;
+    }
+    const message={type:'calibration-action',id:el.id};
+    window.__handleCalibrationMessage(message);
+  }));
+  calibrationWindow.addEventListener('message',event=>{const d=event.data||{};if(d.type==='calibration-state')calibrationWindow.__receiveCalibrationState(d);});
+  calibrationWindow.addEventListener('beforeunload',()=>{calibrationWindow=null;});
+  broadcastCalibrationState();
+}
+document.getElementById('dev-toggle').addEventListener('click',openCalibrationWindow);
+window.__handleCalibrationMessage=function(data){
+  if(!calibrationWindow||calibrationWindow.closed)return;
+  if(data.type==='calibration-control'){
+    const target=document.getElementById(data.id);if(!target)return;
+    target.value=data.value;target.dispatchEvent(new Event(data.eventName,{bubbles:true}));
+  }else if(data.type==='calibration-action'){
+    const target=document.getElementById(data.id);if(target)target.click();
+  }
+};
+window.addEventListener('message',event=>{
+  if(!calibrationWindow||event.source!==calibrationWindow)return;
+  window.__handleCalibrationMessage(event.data||{});
+});
+function changeDensity(value){const v=Number(value);if(!Number.isFinite(v)||v<0.35||v>2.5)return;state.density=v;nearestPreset();render();}
+document.getElementById('density-range').addEventListener('input',e=>changeDensity(e.target.value));
+document.getElementById('density-number').addEventListener('change',e=>{changeDensity(e.target.value);syncControls();});
+const controlLimits={lane:[8,180],row:[12,180],spacing:[0,80],track:[1,80],call:[0.5,12],ring:[0.25,6],ringRadius:[1,24],recDot:[0.5,8],arrow:[3,20],sourceDot:[0.5,8]};
+for(const k of Object.keys(controlLimits)){
+  const update=value=>{const v=Number(value),[min,max]=controlLimits[k];if(!Number.isFinite(v)||v<min||v>max)return;const minValue=k==='ringRadius'?effective().recDot:controlLimits[k][0];if(v<minValue)return;state.base[k]=v/state.density;if(k==='recDot'&&effective().ringRadius<effective().recDot)state.base.ringRadius=state.base.recDot;nearestPreset();render();};
+  document.getElementById(k+'-range').addEventListener('input',e=>update(e.target.value));
+  document.getElementById(k+'-number').addEventListener('change',e=>{update(e.target.value);syncControls();});
+}
+document.getElementById('save-minimal').addEventListener('click',()=>saveEndpoint('minimal'));
+document.getElementById('save-wide').addEventListener('click',()=>saveEndpoint('wide'));
+document.getElementById('generate-css').addEventListener('click',()=>{try{document.getElementById('config-output').value=cssBlock();document.getElementById('endpoint-status').textContent='CSS generated. Copy the complete block and replace the existing calibrated visual-parameters block.';broadcastCalibrationState();}catch(error){document.getElementById('endpoint-status').textContent=error.message;broadcastCalibrationState();}});
+document.getElementById('copy-css').addEventListener('click',async()=>{const output=document.getElementById('config-output');if(!output.value){document.getElementById('endpoint-status').textContent='Generate the CSS block before copying.';broadcastCalibrationState();return;}try{await navigator.clipboard.writeText(output.value);document.getElementById('endpoint-status').textContent='Complete CSS block copied to clipboard.';broadcastCalibrationState();}catch{output.focus();output.select();document.getElementById('endpoint-status').textContent='Clipboard unavailable; CSS block selected. Press Ctrl+C to copy.';broadcastCalibrationState();}});
+document.getElementById('reset-calibration').addEventListener('click',()=>selectPreset(viewDefaults[activeView]));
+function tryAutomaticLoad(){
+  try{
+    if(!window.MFCM_DATA)throw new Error('MFCM_DATA variable was not loaded');
+    loadAnalysis(window.MFCM_DATA,'sama.js');
+  }catch(error){
+    setLoadStatus(`Automatic loading failed: ${error.message}.`,true);
+  }
+}
+document.getElementById('module-view').disabled=true;
+document.getElementById('function-view').disabled=true;
+tryAutomaticLoad();
+</script>
+</body>
+</html>

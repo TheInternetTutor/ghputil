@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e161e">
+<title>GHPUtil — Static Module and Function Analysis</title>
+<style>
+  :root {
+    /* Theme */
+    --page-background:#0e161e;
+    --panel-background:#17232e;
+    --text-color:#e6edf5;
+    --muted-color:#9eacba;
+    --legend-color:#c0ccd7;
+    --track-color:#223344;
+    --call-color:#8ecbff;
+    --conditional-color:#f2bd78;
+    --cell-border-color:#223344;
+
+    /* The name column is measured from the active view labels. */
+    --name-column-width:132px;
+    --lane-column-width:32.5px;
+    --function-row-height:22.5px;
+    --track-thickness:17.5px;
+    --call-thickness:2.2px;
+    --conditional-dash-pattern:5 4;
+    --cell-border-width:0px;
+
+    /* Page and typography */
+    --page-padding:22px;
+    --panel-padding:7.5px;
+    --panel-radius:10px;
+    --base-font-size:13px;
+    --heading-font-size:21px;
+    --name-font-size:12px;
+    --legend-font-size:11px;
+    --content-max-width:1500px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:var(--page-padding);color:var(--text-color);background:var(--page-background);font:var(--base-font-size)/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:var(--content-max-width);margin:0 auto}
+  h1{font-size:var(--heading-font-size);margin:0 0 4px;font-weight:650}
+  .subtitle{margin:0 0 15px;color:var(--muted-color)}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 12px}
+  .preset-buttons{display:flex;flex-wrap:wrap;gap:7px}
+  button,input{font:inherit}
+  button{color:var(--text-color);background:#223344;border:1px solid #405568;border-radius:6px;padding:7px 11px;cursor:pointer}
+  button:hover{background:#2c4358}
+  button[aria-pressed="true"]{background:#315b80;border-color:#75b7e8;color:#fff;box-shadow:0 0 0 1px #75b7e855}
+  button:focus-visible,input:focus-visible{outline:2px solid #8ecbff;outline-offset:2px}
+  .status{color:var(--muted-color);font-size:11px}
+  .dev-toggle{margin:0 0 12px}
+  .calibration{display:none;margin:0 0 14px;padding:14px;background:#111c26;border:1px solid #34495c;border-radius:9px}
+  .calibration.open{display:block}
+  .calibration h2{font-size:15px;margin:0 0 10px}
+  .calibration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px}
+  .control{display:grid;grid-template-columns:1fr 82px;gap:7px 10px;align-items:center}
+  .control label{font-size:12px;color:var(--legend-color)}
+  .control input[type="range"]{grid-column:1/-1;width:100%;accent-color:#8ecbff}
+  .control input[type="number"]{width:82px;background:#0e161e;color:var(--text-color);border:1px solid #405568;border-radius:5px;padding:5px}
+  .scale-control{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #34495c}
+  .calibration-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+  .config-output{width:100%;min-height:125px;margin-top:12px;padding:9px;background:#0b1218;color:#c9d8e6;border:1px solid #34495c;border-radius:6px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}
+  .help{color:var(--muted-color);font-size:11px;margin:8px 0 0}
+  .matrix-shell{overflow:auto;max-width:100%;padding:var(--panel-padding);background:var(--panel-background);border-radius:var(--panel-radius);box-shadow:0 4px 18px #0005}
+  .matrix{position:relative;width:max-content;min-width:100%}
+  table{position:absolute;inset:0;border-collapse:collapse;border-spacing:0;table-layout:fixed}
+  col.name{width:var(--name-column-width)}
+  col.event{width:var(--lane-column-width)}
+  td{height:var(--function-row-height);padding:0;border:var(--cell-border-width) solid var(--cell-border-color);vertical-align:middle}
+  td.name{width:var(--name-column-width);padding:0 8px 0 4px;text-align:right;white-space:nowrap;font:600 var(--name-font-size)/1 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-color);background:var(--panel-background);position:relative;z-index:2}
+  td.event{background:transparent}
+  svg.overlay{position:absolute;inset:0;display:block;overflow:visible;pointer-events:none}
+  .function-track{stroke:var(--track-color);stroke-width:var(--track-thickness);stroke-linecap:round;fill:none}
+  .call-path{stroke:var(--call-color);stroke-width:var(--call-thickness);stroke-linecap:round;fill:none}
+  .conditional-path{stroke:var(--conditional-color);stroke-width:var(--call-thickness);stroke-dasharray:var(--conditional-dash-pattern);stroke-linecap:round;fill:none}
+  .source-dot{fill:var(--call-color)}
+  .conditional-dot{fill:var(--conditional-color)}
+  .event-number{fill:#8193a4;font:8px ui-monospace,monospace;text-anchor:middle}
+  .legend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:14px 2px 0;color:var(--legend-color);font-size:var(--legend-font-size)}
+  .legend-item{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:25px;height:0;border-top:2px solid var(--call-color)}
+  .swatch.dashed{border-top-style:dashed;border-color:var(--conditional-color)}
+  .swatch.track{border-top:var(--track-thickness) solid var(--track-color)}
+  .notes{margin:12px 2px 0;color:var(--muted-color);font-size:11px;max-width:1000px}
+  .ai-disclaimer{color:#dce8f4;font-style:italic;font-weight:600;white-space:normal}
+  @media(max-width:700px){body{padding:12px}.matrix-shell{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Modular Function Call Matrix</h1>
+  <p class="subtitle" id="subtitle">GHPUtil · source-derived static analysis · 34 functions</p>
+  <div class="toolbar" aria-label="Analysis view">
+    <div class="preset-buttons">
+      <button type="button" id="module-view" aria-pressed="true">Module sourcing</button>
+      <button type="button" id="function-view" aria-pressed="false">Function calls</button>
+    </div>
+    <span class="status" id="view-description"></span>
+  </div>
+  <div class="toolbar" aria-label="Diagram layout presets">
+    <div class="preset-buttons" id="preset-buttons">
+      <button type="button" data-preset="minimal" aria-pressed="false">Minimal</button>
+      <button type="button" data-preset="extraCompact" aria-pressed="false">Extra Compact</button>
+      <button type="button" data-preset="compact" aria-pressed="false">Compact</button>
+      <button type="button" data-preset="loose" aria-pressed="true">Loose</button>
+      <button type="button" data-preset="wide" aria-pressed="false">Wide</button>
+    </div>
+    <span class="status" id="dimensions" aria-live="polite"></span>
+  </div>
+  <section class="matrix-shell" aria-label="Function call matrix; scroll horizontally when needed">
+    <div class="matrix" id="matrix">
+      <table id="function-table" aria-label="Function rows and call-event columns"><colgroup id="columns"></colgroup><tbody id="rows"></tbody></table>
+      <svg class="overlay" id="overlay" role="img" aria-label="Each vertical connector represents one call event, from caller row to callee row"></svg>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="legend-item"><span class="swatch track"></span> Function track</span>
+      <span class="legend-item"><span class="swatch"></span><span id="solid-legend">Direct function call</span></span>
+      <span class="legend-item"><span class="swatch dashed"></span><span id="dashed-legend">Dynamic / failure-path dispatch</span></span>
+      <span class="legend-item">Arrowhead points to callee</span>
+    </div>
+    <p class="notes" id="diagram-notes"></p>
+  </section>
+  <button class="dev-toggle" id="dev-toggle" type="button" aria-expanded="false" aria-controls="calibration">⚙ Developer / Calibration</button>
+  <section class="calibration" id="calibration" aria-label="Developer calibration controls">
+    <h2>Layout calibration</h2>
+    <div class="control scale-control">
+      <label for="density-range">Combined density multiplier</label>
+      <input id="density-number" type="number" min="0.35" max="2.5" step="0.01" value="1">
+      <input id="density-range" type="range" min="0.35" max="2.5" step="0.01" value="1">
+    </div>
+    <div class="calibration-grid" id="dimension-controls">
+      <div class="control"><label for="lane-number">Call column width (px)</label><input id="lane-number" type="number" min="8" max="180" step="0.5"><input id="lane-range" type="range" min="8" max="180" step="0.5"></div>
+      <div class="control"><label for="row-number">Function row height (px)</label><input id="row-number" type="number" min="12" max="180" step="0.5"><input id="row-range" type="range" min="12" max="180" step="0.5"></div>
+      <div class="control"><label for="spacing-number">Panel spacing / padding (px)</label><input id="spacing-number" type="number" min="0" max="80" step="0.5"><input id="spacing-range" type="range" min="0" max="80" step="0.5"></div>
+      <div class="control"><label for="track-number">Function track thickness (px)</label><input id="track-number" type="number" min="1" max="80" step="0.5"><input id="track-range" type="range" min="1" max="80" step="0.5"></div>
+    </div>
+    <div class="calibration-actions">
+      <button type="button" id="copy-current">Copy current configuration</button>
+      <button type="button" id="copy-presets">Copy all five presets</button>
+      <button type="button" id="reset-calibration">Reset to this view's default</button>
+    </div>
+    <textarea class="config-output" id="config-output" readonly aria-label="Copyable preset configuration" spellcheck="false"></textarea>
+    <p class="help">The combined multiplier scales all four dimensions together. Individual edits change a dimension's base value; later combined adjustments preserve those relative differences. Selecting a preset restores its exact baseline. The nearest preset remains highlighted during experimentation.</p>
+  </section>
+</main>
+<script>
+const analysisData = {"project":"GHPUtil","archive":"github_publish(16).zip","analysis_method":"Static source inspection of the extracted Bash scripts. No scripts were executed.","module":{"rows":["github_publish.sh","config.sh","validation.sh","git_inspection.sh","github_api.sh","git_publish.sh","install.sh","github-publish.conf.example",".github-publish.conf"],"calls":[{"from":0,"to":1,"conditional":false,"kind":"source","label":"Bash source"},{"from":0,"to":2,"conditional":false,"kind":"source","label":"Bash source"},{"from":0,"to":3,"conditional":false,"kind":"source","label":"Bash source"},{"from":0,"to":4,"conditional":false,"kind":"source","label":"Bash source"},{"from":0,"to":5,"conditional":false,"kind":"source","label":"Bash source"},{"from":1,"to":7,"conditional":true,"kind":"read","label":"template read during initialization"},{"from":1,"to":8,"conditional":true,"kind":"read","label":"project configuration read"},{"from":6,"to":0,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":1,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":2,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":3,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":4,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":5,"conditional":true,"kind":"copy","label":"installer copies package file"},{"from":6,"to":7,"conditional":true,"kind":"copy","label":"installer copies package file"}],"description":"Package file relationships: solid = Bash source at runtime; dashed = file read or copied by installer."},"function":{"rows":["bootstrap()","main()","usage()","parse_arguments()","prepare_project_config()","load_project_config()","resolve_effective_config()","resolve_visibility()","confirm_repository_creation()","die()","log_timestamp_style()","log()","log_prompt()","run_step()","validate_enum()","resolve_project_root()","initialize_logging()","validate_dependencies()","inspect_local_repository()","inspect_origin_remote()","remote_matches_intended_repository()","load_github_token()","cleanup_api_temp()","api_request()","github_authenticate()","check_github_repository()","github_create_repository()","api_error_message()","configure_origin_remote()","verify_ssh_authentication()","publish_branch()","verify_publication()","report_dry_run()","report_success()","install_main()"],"calls":[{"from":0,"to":1,"conditional":false,"kind":"direct"},{"from":1,"to":13,"conditional":false,"kind":"direct"},{"from":1,"to":3,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":15,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":16,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":4,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":5,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":6,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":17,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":18,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":21,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":24,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":19,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":25,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":7,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":8,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":26,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":28,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":29,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":30,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":31,"conditional":true,"kind":"run_step dispatch"},{"from":1,"to":2,"conditional":false,"kind":"direct"},{"from":1,"to":11,"conditional":false,"kind":"direct"},{"from":1,"to":32,"conditional":false,"kind":"direct"},{"from":1,"to":33,"conditional":false,"kind":"direct"},{"from":1,"to":22,"conditional":false,"kind":"direct"},{"from":1,"to":9,"conditional":false,"kind":"direct"},{"from":13,"to":22,"conditional":true,"kind":"failure cleanup"},{"from":4,"to":9,"conditional":false,"kind":"direct"},{"from":4,"to":11,"conditional":false,"kind":"direct"},{"from":4,"to":12,"conditional":false,"kind":"direct"},{"from":5,"to":9,"conditional":false,"kind":"direct"},{"from":5,"to":11,"conditional":false,"kind":"direct"},{"from":6,"to":14,"conditional":false,"kind":"direct"},{"from":6,"to":9,"conditional":false,"kind":"direct"},{"from":6,"to":11,"conditional":false,"kind":"direct"},{"from":7,"to":14,"conditional":false,"kind":"direct"},{"from":7,"to":12,"conditional":false,"kind":"direct"},{"from":8,"to":9,"conditional":false,"kind":"direct"},{"from":8,"to":12,"conditional":false,"kind":"direct"},{"from":9,"to":11,"conditional":false,"kind":"direct"},{"from":11,"to":10,"conditional":false,"kind":"direct"},{"from":3,"to":9,"conditional":false,"kind":"direct"},{"from":14,"to":9,"conditional":false,"kind":"direct"},{"from":15,"to":9,"conditional":false,"kind":"direct"},{"from":16,"to":9,"conditional":false,"kind":"direct"},{"from":17,"to":9,"conditional":false,"kind":"direct"},{"from":18,"to":9,"conditional":false,"kind":"direct"},{"from":18,"to":11,"conditional":false,"kind":"direct"},{"from":19,"to":20,"conditional":false,"kind":"direct"},{"from":19,"to":9,"conditional":false,"kind":"direct"},{"from":19,"to":11,"conditional":false,"kind":"direct"},{"from":21,"to":9,"conditional":false,"kind":"direct"},{"from":23,"to":9,"conditional":false,"kind":"direct"},{"from":24,"to":23,"conditional":false,"kind":"direct"},{"from":24,"to":9,"conditional":false,"kind":"direct"},{"from":25,"to":23,"conditional":false,"kind":"direct"},{"from":25,"to":27,"conditional":false,"kind":"direct"},{"from":25,"to":9,"conditional":false,"kind":"direct"},{"from":26,"to":23,"conditional":false,"kind":"direct"},{"from":26,"to":27,"conditional":false,"kind":"direct"},{"from":26,"to":9,"conditional":false,"kind":"direct"},{"from":26,"to":11,"conditional":false,"kind":"direct"},{"from":28,"to":9,"conditional":false,"kind":"direct"},{"from":28,"to":11,"conditional":false,"kind":"direct"},{"from":29,"to":9,"conditional":false,"kind":"direct"},{"from":29,"to":11,"conditional":false,"kind":"direct"},{"from":30,"to":9,"conditional":false,"kind":"direct"},{"from":30,"to":11,"conditional":false,"kind":"direct"},{"from":31,"to":9,"conditional":false,"kind":"direct"},{"from":31,"to":11,"conditional":false,"kind":"direct"},{"from":32,"to":11,"conditional":false,"kind":"direct"},{"from":33,"to":11,"conditional":false,"kind":"direct"}],"description":"Static function relationships. Dashed amber = call target dispatched through run_step or failure-only cleanup. Ordering is an inferred workflow/declaration presentation, not a runtime trace."},"notes":["github_publish.sh is the normal runtime entry point and sources five implementation modules.","install.sh is a separate installer entry point; it copies six shell scripts and the configuration template.","config.sh reads github-publish.conf.example when initializing a project and reads the project .github-publish.conf at runtime.","The project configuration is data, not a sourced Bash module.","run_step invokes function names passed to it by main; the targets are represented as dashed dispatch edges.","Functions with no identified user-defined caller remain in the diagram; this does not prove they are unused.","Calls into Bash builtins, external commands, and operating-system utilities are excluded from the function-to-function graph."]};
+let activeView = 'module';
+let functionsList = analysisData.module.rows;
+let calls = analysisData.module.calls;
+const presets = {
+  // minimal:{lane:15,row:20,spacing:5,track:15},
+  // extraCompact:{lane:23.75,row:21.25,spacing:6.25,track:16.25},
+  // compact:{lane:32.5,row:22.5,spacing:7.5,track:17.5},
+  // loose:{lane:41.25,row:23.75,spacing:8.75,track:18.75},
+  // wide:{lane:50,row:25,spacing:10,track:20}
+
+  // minimal:{lane:10,row:20,spacing:5,track:15},
+  // extraCompact:{lane:11.5,row:21.25,spacing:6.25,track:16.25},
+  // compact:{lane:13,row:22.5,spacing:7.5,track:17.5},
+  // loose:{lane:14.5,row:23.75,spacing:8.75,track:18.75},
+  // wide:{lane:16,row:25,spacing:10,track:20}
+
+  minimal:{lane:10,row:20,spacing:5,track:15},
+  extraCompact:{lane:15,row:21.25,spacing:6.25,track:16.25},
+  compact:{lane:20,row:22.5,spacing:7.5,track:17.5},
+  loose:{lane:25,row:23.75,spacing:8.75,track:18.75},
+  wide:{lane:30,row:25,spacing:10,track:20}
+};
+const presetLabels={minimal:'Minimal',extraCompact:'Extra Compact',compact:'Compact',loose:'Loose',wide:'Wide'};
+const viewDefaults={module:'loose',function:'minimal'};
+const state={preset:'loose',density:1,base:{lane:41.25,row:23.75,spacing:8.75,track:18.75}};
+const NS="http://www.w3.org/2000/svg";
+const matrix=document.getElementById('matrix');
+const table=document.getElementById('function-table');
+const columns=document.getElementById('columns');
+const rows=document.getElementById('rows');
+const svg=document.getElementById('overlay');
+const dimensions=document.getElementById('dimensions');
+
+function svgEl(tag,attrs,parent=svg){const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);parent.appendChild(el);return el;}
+function effective(){return Object.fromEntries(Object.entries(state.base).map(([k,v])=>[k,v*state.density]));}
+function syncControls(){
+  const e=effective();
+  document.getElementById('density-range').value=state.density;
+  document.getElementById('density-number').value=state.density.toFixed(2);
+  for(const k of ['lane','row','spacing','track']){
+    document.getElementById(k+'-range').value=e[k];
+    document.getElementById(k+'-number').value=Number(e[k].toFixed(2));
+  }
+  document.querySelectorAll('[data-preset]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.preset===state.preset)));
+  updateConfigOutput();
+}
+function nearestPreset(){
+  const e=effective();let best='compact',bestScore=Infinity;
+  for(const [name,p] of Object.entries(presets)){
+    const score=['lane','row','spacing','track'].reduce((sum,k)=>sum+Math.pow((e[k]-p[k])/Math.max(p[k],1),2),0);
+    if(score<bestScore){best=name;bestScore=score;}
+  }
+  state.preset=best;
+}
+function configObject(name,base,density=1){
+  const effective=Object.fromEntries(Object.entries(base).map(([k,v])=>[k,Number((v*density).toFixed(2))]));
+  return {preset:name,label:presetLabels[name],density:Number(density.toFixed(2)),dimensions:{callColumnWidth:effective.lane,functionRowHeight:effective.row,panelSpacing:effective.spacing,functionTrackThickness:effective.track}};
+}
+function updateConfigOutput(){
+  const all=Object.fromEntries(Object.entries(presets).map(([name,p])=>[name,configObject(name,{lane:p.lane,row:p.row,spacing:p.spacing,track:p.track})]));
+  document.getElementById('config-output').value=JSON.stringify({selectedPreset:state.preset,current:configObject(state.preset,state.base,state.density),presets:all},null,2);
+}
+function render(){
+  const e=effective();
+  const displayNames=functionsList.map(name=>activeView==='function'?name.replace(/\(\)$/,''):name);
+  const measureCanvas=document.createElement('canvas');
+  const measureContext=measureCanvas.getContext('2d');
+  const labelFont=getComputedStyle(document.documentElement).getPropertyValue('--name-font-size').trim()||'12px';
+  measureContext.font=`600 ${labelFont} ui-monospace, SFMono-Regular, Consolas, monospace`;
+  const longestLabelWidth=displayNames.reduce((max,name)=>Math.max(max,measureContext.measureText(name).width),0);
+  const nameColumnWidth=Math.ceil(longestLabelWidth+12);
+  const p={name:nameColumnWidth,lane:e.lane,row:e.row,spacing:e.spacing,track:e.track};
+  document.documentElement.style.setProperty('--name-column-width',p.name+'px');
+  document.documentElement.style.setProperty('--panel-padding',p.spacing+'px');
+  document.documentElement.style.setProperty('--track-thickness',p.track+'px');
+  const W=p.name+calls.length*p.lane;
+  const H=functionsList.length*p.row;
+  matrix.style.width=W+'px';matrix.style.height=H+'px';
+  table.style.width=W+'px';table.style.height=H+'px';
+  document.documentElement.style.setProperty('--lane-column-width',p.lane+'px');
+  document.documentElement.style.setProperty('--function-row-height',p.row+'px');
+  columns.replaceChildren();
+  const nameCol=document.createElement('col');nameCol.className='name';nameCol.style.width=p.name+'px';columns.appendChild(nameCol);
+  for(let i=0;i<calls.length;i++){const c=document.createElement('col');c.className='event';columns.appendChild(c);}
+  rows.replaceChildren();
+  displayNames.forEach(name=>{const tr=document.createElement('tr');const label=document.createElement('td');label.className='name';label.textContent=name;label.style.width=p.name+'px';tr.appendChild(label);for(let i=0;i<calls.length;i++){const td=document.createElement('td');td.className='event';tr.appendChild(td);}rows.appendChild(tr);});
+  svg.replaceChildren();svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+  const defs=svgEl('defs',{});
+  const marker=svgEl('marker',{id:'arrow',markerWidth:7,markerHeight:7,refX:5.8,refY:3.5,orient:'auto',markerUnits:'userSpaceOnUse'},defs);
+  svgEl('path',{d:'M0 0 L7 3.5 L0 7 Z',fill:'var(--call-color)'},marker);
+  const markerC=svgEl('marker',{id:'arrow-c',markerWidth:7,markerHeight:7,refX:5.8,refY:3.5,orient:'auto',markerUnits:'userSpaceOnUse'},defs);
+  svgEl('path',{d:'M0 0 L7 3.5 L0 7 Z',fill:'var(--conditional-color)'},markerC);
+  const tracks=svgEl('g',{class:'function-track'});
+  functionsList.forEach((_,i)=>{const y=(i+.5)*p.row;svgEl('path',{d:`M${p.name} ${y} H${W}`},tracks);});
+  calls.forEach((call,i)=>{
+    const x=p.name+(i+.5)*p.lane;
+    const y1=(call.from+.5)*p.row;
+    const y2=(call.to+.5)*p.row;
+    const cls=call.conditional?'conditional-path':'call-path';
+    const markerEnd=call.conditional?'url(#arrow-c)':'url(#arrow)';
+    if(call.from===call.to){
+      const r=Math.min(10,p.lane*.28);
+      const d=`M${x-r} ${y1} C${x-r} ${y1-2.8*r},${x+r} ${y1-2.8*r},${x+r} ${y1}`;
+      svgEl('path',{d,class:cls,'marker-end':markerEnd});
+      svgEl('circle',{cx:x-r,cy:y1,r:2.5,class:call.conditional?'conditional-dot':'source-dot'});
+    }else{
+      svgEl('path',{d:`M${x} ${y1} V${y2}`,class:cls,'marker-end':markerEnd});
+      svgEl('circle',{cx:x,cy:y1,r:2.5,class:call.conditional?'conditional-dot':'source-dot'});
+    }
+  });
+  dimensions.textContent=`${presetLabels[state.preset]} · ${functionsList.length} ${activeView==='module'?'files':'functions'} · ${calls.length} relationships · ${W} × ${H} px`;
+  syncControls();
+}
+function selectView(name){
+  activeView=name;
+  const d=analysisData[name];
+  functionsList=d.rows;
+  calls=d.calls;
+  document.getElementById('module-view').setAttribute('aria-pressed',String(name==='module'));
+  document.getElementById('function-view').setAttribute('aria-pressed',String(name==='function'));
+  document.getElementById('subtitle').textContent=`GHPUtil · ${name==='module'?'module dependency':'function call'} static analysis · ${functionsList.length} ${name==='module'?'files':'functions'}`;
+  document.getElementById('view-description').textContent=d.description;
+  document.getElementById('solid-legend').textContent=name==='module'?'Runtime Bash source':'Direct function call';
+  document.getElementById('dashed-legend').textContent=name==='module'?'Template/config read or installer copy':'Dynamic dispatch / failure-only cleanup';
+  document.getElementById('diagram-notes').textContent=(name==='module'
+    ? 'Module view: horizontal tracks are package files. Solid connectors show the five runtime Bash source statements. Dashed connectors show configuration/template reads and installer copy dependencies. The project configuration is an input file, not a sourced module.'
+    : 'Function view: horizontal tracks are declared Bash functions. Each vertical event column is one statically inferred caller-to-callee relationship. Dashed amber connectors mark run_step dispatch or failure-only cleanup. Column order is an inferred presentation, not execution timing or a runtime trace.') + ' ' + analysisData.notes.join(' ') + ' ';
+  const disclaimer=document.createElement('span');
+  disclaimer.className='ai-disclaimer';
+  disclaimer.textContent='AI-generated chart; it may contain mistakes.';
+  document.getElementById('diagram-notes').appendChild(disclaimer);
+  selectPreset(viewDefaults[name]);
+}
+document.getElementById('module-view').addEventListener('click',()=>selectView('module'));
+document.getElementById('function-view').addEventListener('click',()=>selectView('function'));
+function selectPreset(name){state.preset=name;state.density=1;const p=presets[name];state.base={lane:p.lane,row:p.row,spacing:p.spacing,track:p.track};render();}
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>selectPreset(b.dataset.preset)));
+document.getElementById('dev-toggle').addEventListener('click',()=>{
+  const panel=document.getElementById('calibration');const open=panel.classList.toggle('open');
+  document.getElementById('dev-toggle').setAttribute('aria-expanded',String(open));
+});
+function changeDensity(value){const v=Number(value);if(!Number.isFinite(v)||v<0.35||v>2.5)return;state.density=v;nearestPreset();render();}
+document.getElementById('density-range').addEventListener('input',e=>changeDensity(e.target.value));
+document.getElementById('density-number').addEventListener('change',e=>{changeDensity(e.target.value);syncControls();});
+for(const k of ['lane','row','spacing','track']){
+  const update=value=>{const v=Number(value);if(!Number.isFinite(v))return;const input=document.getElementById(k+'-number');const min=Number(input.min),max=Number(input.max);if(v<min||v>max)return;state.base[k]=v/state.density;nearestPreset();render();};
+  document.getElementById(k+'-range').addEventListener('input',e=>update(e.target.value));
+  document.getElementById(k+'-number').addEventListener('change',e=>{update(e.target.value);syncControls();});
+}
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text);dimensions.textContent='Configuration copied to clipboard';}
+  catch{const out=document.getElementById('config-output');out.focus();out.select();dimensions.textContent='Clipboard unavailable; configuration selected for copying';}
+}
+document.getElementById('copy-current').addEventListener('click',()=>copyText(JSON.stringify(configObject(state.preset,state.base,state.density),null,2)));
+document.getElementById('copy-presets').addEventListener('click',()=>{
+  const all=Object.fromEntries(Object.entries(presets).map(([name,p])=>[name,configObject(name,{lane:p.lane,row:p.row,spacing:p.spacing,track:p.track})]));
+  copyText(JSON.stringify(all,null,2));
+});
+document.getElementById('reset-calibration').addEventListener('click',()=>selectPreset(viewDefaults[activeView]));
+selectView('module');
+
+</script>
+</body>
+</html>
